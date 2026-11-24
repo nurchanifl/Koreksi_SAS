@@ -34,7 +34,7 @@
       <!-- API Key Card -->
       <div class="bg-white rounded-xl shadow-sm p-4 border border-slate-200 space-y-2.5">
         <div class="flex items-center justify-between">
-          <h2 class="font-bold text-sm text-slate-700">1. Koneksi AI Vision (Bebas Ngepasin Kotak)</h2>
+          <h2 class="font-bold text-sm text-slate-700">1. Koneksi AI Vision (High-Precision)</h2>
           <span id="apiStatusBadge" class="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-medium">Wajib diisi</span>
         </div>
         <div class="flex gap-2">
@@ -46,7 +46,7 @@
         </div>
         <div class="flex items-center justify-between gap-2 pt-1">
           <select id="geminiModelSelect" class="flex-1 text-xs border border-slate-300 rounded-lg px-2.5 py-2 text-slate-700 bg-white font-medium">
-            <option value="auto">Otomatis (Pilih Flash Tercepat & Auto-Cadangan)</option>
+            <option value="auto">Otomatis (Prioritas Flash Penuh Presisi Tinggi)</option>
           </select>
           <button type="button" onclick="discoverAvailableModels(true)"
             class="px-3 py-2 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded-lg font-semibold shrink-0">
@@ -54,7 +54,7 @@
           </button>
         </div>
         <p id="modelInfoText" class="text-[11px] text-slate-500">
-          Mode Otomatis memprioritaskan model Flash gratis dan otomatis berpindah ke model cadangan jika server sedang padat.
+          Menggunakan resolusi tajam 1800px + penajam kontras tinta untuk membaca silang [X], ralat (=), dan centang [√] secara akurat.
         </p>
       </div>
 
@@ -152,7 +152,7 @@
     <section id="tab-scan" class="hidden space-y-4">
       <div class="bg-white rounded-xl shadow-sm p-4 border border-slate-200 text-center space-y-3">
         <div class="bg-blue-50 text-blue-800 text-xs p-3 rounded-lg text-left leading-relaxed">
-          <strong>Cara Foto Bebas & Mudah:</strong> Tidak perlu mengepaskan garis kotak. Cukup foto lembar jawab secara normal agar bagian <em>Nama/Kelas</em> sampai <em>Blok C (B/S)</em> terlihat jelas. Bagian D (Uraian) otomatis diabaikan.
+          <strong>Tips Foto Paling Akurat:</strong> Posisikan kamera tegak di atas kertas (jarak dekat sehingga bagian <em>Nama/Kelas</em> sampai <em>Blok C</em> memenuhi layar, tidak perlu memfoto bagian Uraian di bawah), pencahayaan terang merata.
         </div>
 
         <div class="grid grid-cols-2 gap-3 pt-1">
@@ -178,8 +178,8 @@
       <!-- Loading Indicator -->
       <div id="scanLoadingBox" class="hidden bg-white rounded-xl shadow-sm p-6 border border-blue-200 text-center space-y-2.5">
         <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-        <p id="scanLoadingTitle" class="font-bold text-sm text-slate-700">Membaca Lembar Jawab...</p>
-        <p id="scanLoadingSub" class="text-xs text-slate-500">Mendeteksi nama siswa, silang PG, ralat (=), centang PGK, dan B/S.</p>
+        <p id="scanLoadingTitle" class="font-bold text-sm text-slate-700">Mempertajam & Membaca LJK...</p>
+        <p id="scanLoadingSub" class="text-xs text-slate-500">Memeriksa tiap kotak PG, ralat (=), PGK, dan B/S dengan resolusi tinggi.</p>
       </div>
 
       <!-- Error Box -->
@@ -425,7 +425,7 @@
 <script>
   // ==================== STATE MANAGEMENT ====================
   const STORAGE_KEY = 'ljk_sas_darussalam_smart_v3';
-  const CHOICE_COUNT_4 = 4; // 4 pilihan/baris untuk Blok B (PGK) dan Blok C (B/S)
+  const CHOICE_COUNT_4 = 4;
 
   let appState = {
     apiKey: '',
@@ -541,7 +541,7 @@
 
   function populateModelDropdown(modelsList, selectedVal) {
     const sel = document.getElementById('geminiModelSelect');
-    sel.innerHTML = '<option value="auto">Otomatis (Pilih Flash Tercepat & Auto-Cadangan)</option>';
+    sel.innerHTML = '<option value="auto">Otomatis (Prioritas Flash Penuh Presisi Tinggi)</option>';
     modelsList.forEach(m => {
       const opt = document.createElement('option');
       opt.value = m;
@@ -580,14 +580,15 @@
         return true;
       });
 
+      // Rank: FULL Flash models FIRST for spatial precision, -lite models only as fallback
       flashModels.sort((a, b) => {
         const score = (n) => {
           let s = 0;
-          if (n.includes('3.8')) s += 30;
-          else if (n.includes('3.5')) s += 25;
-          else if (n.includes('3.')) s += 20;
-          else if (n.includes('2.5')) s += 10;
-          if (n.includes('lite')) s += 8;
+          if (n.includes('3.8')) s += 40;
+          else if (n.includes('3.5')) s += 35;
+          else if (n.includes('3.')) s += 30;
+          else if (n.includes('2.5')) s += 15;
+          if (n.includes('lite')) s -= 15; // keep lite as backup only
           if (n.includes('latest')) s += 2;
           return s;
         };
@@ -600,7 +601,7 @@
 
       if (showFeedback) {
         document.getElementById('modelInfoText').textContent = flashModels.length
-          ? `Ditemukan ${flashModels.length} model Flash aktif: ${flashModels.join(', ')}`
+          ? `Urutan prioritas aktif: ${flashModels.join(' → ')}`
           : 'Tidak ditemukan model Flash khusus; mode otomatis tetap aktif.';
         showToast(`${flashModels.length} model Flash aktif ditemukan!`);
       }
@@ -783,7 +784,7 @@
 
     if (notify) {
       showToast('Pengaturan & Kunci Jawaban tersimpan!');
-      if (appState.apiKey && appState.discoveredFlashModels.length === 0) {
+      if (appState.apiKey) {
         await discoverAvailableModels(false);
       }
     }
@@ -796,8 +797,8 @@
     document.getElementById('headerCountBadge').textContent = `${appState.students.length} Siswa`;
   }
 
-  // ==================== IMAGE COMPRESSION & RESILIENT AI VISION ====================
-  function compressImageToBase64(file, maxDim = 1080, quality = 0.78) {
+  // ==================== HIGH-RES CONTRAST PREPROCESSING & AI VISION ====================
+  function preprocessAndEncodeSheet(file, maxDim = 1800, quality = 0.90) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -819,6 +820,19 @@
           canvas.height = h;
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, w, h);
+
+          // Enhance ink contrast gently so thin ballpoint pen [X] & [√] stand out clearly
+          const imgData = ctx.getImageData(0, 0, w, h);
+          const d = imgData.data;
+          const contrast = 1.22;
+          const intercept = 128 * (1 - contrast);
+          for (let i = 0; i < d.length; i += 4) {
+            d[i] = Math.min(255, Math.max(0, d[i] * contrast + intercept));
+            d[i + 1] = Math.min(255, Math.max(0, d[i + 1] * contrast + intercept));
+            d[i + 2] = Math.min(255, Math.max(0, d[i + 2] * contrast + intercept));
+          }
+          ctx.putImageData(imgData, 0, 0);
+
           const dataUrl = canvas.toDataURL('image/jpeg', quality);
           resolve({
             dataUrl,
@@ -851,11 +865,11 @@
     document.getElementById('scanResultBox').classList.add('hidden');
     document.getElementById('scanErrorBox').classList.add('hidden');
     document.getElementById('scanLoadingBox').classList.remove('hidden');
-    document.getElementById('scanLoadingTitle').textContent = 'Membaca Lembar Jawab...';
-    document.getElementById('scanLoadingSub').textContent = 'Mendeteksi nama siswa, silang PG, ralat (=), centang PGK, dan B/S.';
+    document.getElementById('scanLoadingTitle').textContent = 'Mempertajam & Membaca LJK...';
+    document.getElementById('scanLoadingSub').textContent = 'Menganalisis kotak PG, ralat (=), PGK, dan B/S pada resolusi 1800px.';
 
     try {
-      const { dataUrl, base64 } = await compressImageToBase64(file, 1080, 0.78);
+      const { dataUrl, base64 } = await preprocessAndEncodeSheet(file, 1800, 0.90);
       const { parsedData, usedModel } = await analyzeSheetWithAutoFallback(base64);
 
       currentScan = {
@@ -915,7 +929,7 @@
           ]
         }],
         generationConfig: {
-          temperature: 0.1,
+          temperature: 0.05,
           responseMimeType: 'application/json'
         }
       })
@@ -943,43 +957,55 @@
     const fallbackPool = [
       ...(appState.model && appState.model !== 'auto' ? [appState.model] : []),
       ...(appState.discoveredFlashModels || []),
-      'gemini-3.8-flash-lite',
       'gemini-3.8-flash',
-      'gemini-3.5-flash-lite',
-      'gemini-3.5-flash'
+      'gemini-3.5-flash',
+      'gemini-3.8-flash-lite',
+      'gemini-3.5-flash-lite'
     ];
     const candidateModels = [...new Set(fallbackPool)];
 
-    const promptText = `Kamu adalah sistem OMR & OCR presisi tinggi untuk membaca foto Lembar Jawab Ujian SMA Islam Darussalam.
-Perhatikan tata letak kertas secara saksama (meskipun foto sedikit miring):
-1. IDENTITAS (Bagian Atas):
-   - "nama": tulisan tangan di sebelah label "Nama :".
-   - "nomor_peserta": tulisan tangan di sebelah label "Nomor Peserta :".
-   - "kelas": tulisan tangan di sebelah label "Kelas :".
-2. BLOK A. PILIHAN GANDA (Nomor 1 sampai ${appState.pgCount}):
-   - Terdiri dari kelompok grid 1-5, 6-10, 11-15, 16-20, dan 21-25 dengan kotak huruf A, B, C, D, E.
-   - Siswa menandai jawaban dengan tanda SILANG [X].
-   - ATURAN RALAT PENTING: Jika sebuah kotak memiliki dua garis coretan horizontal (=) atau dicoret penuh untuk membatalkan jawaban, ABAIKAN kotak tersebut dan ambil kotak lain yang memiliki tanda silang [X] bersih.
-   - Jika kosong atau ada lebih dari satu silang [X] yang sama-sama tidak dicoret, isi dengan "".
-   - Kembalikan objek "pg" dengan key "1" sampai "${appState.pgCount}" berisi "A", "B", "C", "D", "E", atau "".
-3. BLOK B. PILIHAN GANDA KOMPLEKS (Nomor 1 sampai 5, HANYA 4 PILIHAN TERATAS):
-   - Terdapat 5 kolom vertikal (nomor 1, 2, 3, 4, 5). Setiap nomor HANYA memakai 4 kotak pilihan dari atas (baris 1) ke bawah (baris 4). Jika pada cetakan kertas terdapat kotak ke-5 di paling bawah yang kosong, abaikan kotak ke-5 tersebut.
-   - Siswa memberi tanda CENTANG [√] pada satu atau lebih kotak.
-   - Kembalikan objek "pgk" dengan key "1" sampai "5", masing-masing berupa array angka baris 1..4 yang dicentang (contoh: [1, 3] atau [] jika kosong).
-4. BLOK C. PILIHAN GANDA KATEGORI / BENAR SALAH (Nomor 1 sampai 5, HANYA 4 BARIS TERATAS):
-   - Terdapat 5 tabel kecil (nomor 1, 2, 3, 4, 5). Setiap tabel memiliki header kolom kiri "B" (Benar) dan kolom kanan "S" (Salah), dan HANYA memakai 4 baris pernyataan dari atas (indeks 0) ke bawah (indeks 3). Jika pada cetakan kertas terdapat baris ke-5 paling bawah yang kosong, abaikan baris ke-5 tersebut.
-   - Siswa memberi tanda CENTANG [√] pada kolom B atau S di tiap baris.
-   - Kembalikan objek "bs" dengan key "1" sampai "5", masing-masing berupa array tepat 4 elemen berisi "B", "S", atau "" (contoh: ["B", "S", "B", "S"]).
-5. BLOK D. URAIAN: Abaikan sepenuhnya.
-6. "catatan_ai": Tulis catatan singkat bahasa Indonesia jika ada tulisan tangan kurang jelas atau coretan meragukan, atau "" jika semua terbaca jelas.
+    const promptText = `Kamu adalah sistem OMR & OCR presisi tinggi khusus untuk Lembar Jawab SAS Gasal SMA Islam Darussalam.
+Amati gambar dengan sangat teliti, sel demi sel, tanpa menebak:
 
-Kembalikan HANYA JSON valid dengan skema:
+1. IDENTITAS SISWA (Bagian Atas):
+   - "nama": baca tulisan tangan setelah "Nama :".
+   - "nomor_peserta": baca tulisan tangan setelah "Nomor Peserta :".
+   - "kelas": baca tulisan tangan setelah "Kelas :".
+
+2. BLOK A. PILIHAN GANDA (Nomor 1 sampai ${appState.pgCount}):
+   - Tata letak Blok A terbagi menjadi beberapa kotak tabel terpisah:
+     * Tabel Kiri Atas: Nomor 1, 2, 3, 4, 5
+     * Tabel Kiri Bawah: Nomor 6, 7, 8, 9, 10
+     * Tabel Tengah Atas: Nomor 11, 12, 13, 14, 15
+     * Tabel Tengah Bawah: Nomor 16, 17, 18, 19, 20
+     ${appState.pgCount === 25 ? '* Tabel Kanan Atas: Nomor 21, 22, 23, 24, 25' : '* (Abaikan Tabel Kanan Atas nomor 21-25)'}
+   - Setiap baris memiliki kolom nomor soal di kiri diikuti 5 kotak berhuruf cetak: A | B | C | D | E (baris genap memiliki latar abu-abu muda, baris ganjil putih).
+   - JANGAN menganggap huruf cetak A, B, C, D, E di kotak kosong sebagai jawaban!
+   - Jawaban SAH adalah kotak yang ditimpa tanda SILANG BOLPOIN [X] (dua garis diagonal menyilang).
+   - ATURAN RALAT: Jika sebuah kotak diberi dua garis coretan mendatar (=) untuk membatalkan pilihan, ABAIKAN kotak tersebut dan ambil kotak lain di baris yang sama yang memiliki tanda silang [X] bersih.
+   - Jika baris kosong atau memiliki >1 tanda silang [X] aktif yang tidak dicoret, isi "".
+
+3. BLOK B. PILIHAN GANDA KOMPLEKS (Nomor 1 sampai 5, HANYA 4 KOTAK TERATAS):
+   - Di kiri bawah ada 5 kolom vertikal berlabel angka 1, 2, 3, 4, 5 di sebelah kirinya.
+   - Setiap kolom memiliki kotak-kotak vertikal. Periksa HANYA 4 kotak teratas dari atas ke bawah (baris 1, 2, 3, 4). Abaikan kotak ke-5 paling bawah.
+   - Laporkan nomor baris (1..4) yang memiliki goresan tanda CENTANG [√] atau silang di dalamnya (misal [1, 3] atau []).
+
+4. BLOK C. PILIHAN GANDA KATEGORI / BENAR SALAH (Nomor 1 sampai 5, HANYA 4 BARIS TERATAS):
+   - Di kanan bawah ada 5 tabel kecil berlabel 1, 2, 3, 4, 5.
+   - Baris paling atas tiap tabel adalah header huruf cetak "B" (kolom kiri) dan "S" (kolom kanan).
+   - Di bawah header B/S, periksa HANYA 4 baris pertama dari atas ke bawah (indeks 0, 1, 2, 3). Abaikan baris ke-5 paling bawah.
+   - Pada setiap baris, lihat apakah tanda CENTANG [√] berada di kolom kiri ("B") atau kolom kanan ("S"). Jika kosong isi "".
+
+5. BLOK D. URAIAN: Abaikan sepenuhnya.
+
+Kembalikan HANYA JSON valid dengan urutan key persis seperti berikut ("layout_verification" diisi lebih dulu untuk memastikan tidak ada pergeseran baris):
 {
+  "layout_verification": "ringkasan singkat pengecekan tiap blok",
   "nama": "string",
   "nomor_peserta": "string",
   "kelas": "string",
   "pg": {"1": "A", ...},
-  "pgk": {"1": [1, 2], ...},
+  "pgk": {"1": [1, 3], ...},
   "bs": {"1": ["B", "S", "B", "S"], ...},
   "catatan_ai": "string"
 }`;
@@ -992,8 +1018,8 @@ Kembalikan HANYA JSON valid dengan skema:
       for (let attempt = 1; attempt <= 2; attempt++) {
         try {
           if (i > 0 || attempt > 1) {
-            document.getElementById('scanLoadingTitle').textContent = `Mencoba jalur cepat (${modelName})...`;
-            document.getElementById('scanLoadingSub').textContent = 'Server utama sedang padat, otomatis mengalihkan jalur pembacaan.';
+            document.getElementById('scanLoadingTitle').textContent = `Membaca lewat jalur ${modelName}...`;
+            document.getElementById('scanLoadingSub').textContent = 'Mengoptimalkan koneksi server pembacaan...';
           }
           const parsedData = await callSingleGeminiModel(modelName, base64Jpeg, promptText);
           return { parsedData, usedModel: modelName };
@@ -1010,7 +1036,7 @@ Kembalikan HANYA JSON valid dengan skema:
           }
 
           if (attempt === 1) {
-            await sleep(1200);
+            await sleep(1000);
           }
         }
       }
@@ -1026,7 +1052,6 @@ Kembalikan HANYA JSON valid dengan skema:
     let scoreBS = 0;
     const itemResults = [];
 
-    // 1. Blok A (PG)
     for (let i = 1; i <= appState.pgCount; i++) {
       const k = appState.keys.pg[i] || '';
       const ans = scanObj.pg[i] || '';
@@ -1043,7 +1068,6 @@ Kembalikan HANYA JSON valid dengan skema:
       });
     }
 
-    // 2. Blok B (PG Kompleks - 4 Pilihan, Mutlak)
     for (let q = 1; q <= 5; q++) {
       const kArr = [...(appState.keys.pgk[q] || [])]
         .filter(n => n >= 1 && n <= CHOICE_COUNT_4)
@@ -1068,7 +1092,6 @@ Kembalikan HANYA JSON valid dengan skema:
       });
     }
 
-    // 3. Blok C (Benar/Salah - 4 Pilihan, Mutlak per Nomor Soal)
     for (let q = 1; q <= 5; q++) {
       const kRows = (appState.keys.bs[q] || ['', '', '', '']).slice(0, CHOICE_COUNT_4);
       const ansRows = (scanObj.bs[q] || ['', '', '', '']).slice(0, CHOICE_COUNT_4);
@@ -1140,7 +1163,6 @@ Kembalikan HANYA JSON valid dengan skema:
     document.getElementById('previewScorePGK').textContent = evalRes.scorePGK;
     document.getElementById('previewScoreBS').textContent = evalRes.scoreBS;
 
-    // 1. Grid PG
     const pgContainer = document.getElementById('previewGridPG');
     pgContainer.innerHTML = '';
     const cycleOpts = ['A', 'B', 'C', 'D', 'E', ''];
@@ -1164,7 +1186,6 @@ Kembalikan HANYA JSON valid dengan skema:
       pgContainer.appendChild(btn);
     }
 
-    // 2. Grid PGK (4 Pilihan)
     const pgkContainer = document.getElementById('previewGridPGK');
     pgkContainer.innerHTML = '';
 
@@ -1204,7 +1225,6 @@ Kembalikan HANYA JSON valid dengan skema:
       pgkContainer.appendChild(col);
     }
 
-    // 3. Grid BS (4 Pilihan)
     const bsContainer = document.getElementById('previewGridBS');
     bsContainer.innerHTML = '';
     const bsCycle = ['B', 'S', ''];
