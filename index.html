@@ -3,14 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Koreksi LJK Digital - SAS</title>
+  <title>Koreksi LJK Instan - SAS</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
   <style>
     body { -webkit-tap-highlight-color: transparent; font-family: system-ui, -apple-system, sans-serif; }
     .tab-active { color: #1d4ed8; border-top: 3px solid #1d4ed8; background-color: #eff6ff; }
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .touch-none-area { touch-action: none; }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800 pb-24">
@@ -18,8 +17,11 @@
   <!-- Header -->
   <header class="bg-blue-800 text-white sticky top-0 z-30 shadow-md px-4 py-3 flex items-center justify-between">
     <div>
-      <h1 class="font-bold text-base leading-tight">Koreksi LJK Digital</h1>
-      <p id="headerSubtitle" class="text-xs text-blue-200 truncate max-w-[240px]">Belum ada mapel diatur</p>
+      <div class="flex items-center gap-2">
+        <h1 class="font-bold text-base leading-tight">Koreksi LJK Instan</h1>
+        <span class="bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">OFFLINE</span>
+      </div>
+      <p id="headerSubtitle" class="text-xs text-blue-200 truncate max-w-[230px]">Belum ada mapel diatur</p>
     </div>
     <div class="text-right">
       <span id="headerCountBadge" class="bg-blue-950 text-blue-100 text-xs font-semibold px-2.5 py-1 rounded-full">
@@ -28,35 +30,14 @@
     </div>
   </header>
 
-  <!-- Main Content Container -->
+  <!-- Main Content -->
   <main class="max-w-lg mx-auto p-3 space-y-4">
 
     <!-- ==================== TAB 1: SETUP & KUNCI ==================== -->
     <section id="tab-setup" class="space-y-4">
-      <!-- API Key Card -->
-      <div class="bg-white rounded-xl shadow-sm p-4 border border-slate-200">
-        <div class="flex items-center justify-between mb-2">
-          <h2 class="font-bold text-sm text-slate-700">1. Koneksi AI Vision (Gemini API)</h2>
-          <span id="apiStatusBadge" class="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-medium">Wajib diisi</span>
-        </div>
-        <div class="flex gap-2">
-          <input type="password" id="apiKeyInput" placeholder="Tempel Gemini API Key (AIza...)"
-            class="flex-1 text-sm border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-600" />
-          <button onclick="toggleApiVisibility()" class="px-3 py-2 text-xs bg-slate-100 border border-slate-300 rounded-lg font-medium">
-            Lihat
-          </button>
-        </div>
-        <div class="mt-2 flex items-center justify-between text-xs text-slate-500">
-          <span>Model:</span>
-          <select id="geminiModelSelect" class="border border-slate-300 rounded px-2 py-1 text-slate-700 bg-white">
-            <option value="gemini-3.8-flash">gemini-3.8-flash(Presisi Tinggi)</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Identitas Ujian & Bobot Nilai -->
+      <!-- Identitas Ujian & Bobot -->
       <div class="bg-white rounded-xl shadow-sm p-4 border border-slate-200 space-y-3">
-        <h2 class="font-bold text-sm text-slate-700">2. Identitas Ujian & Bobot Nilai</h2>
+        <h2 class="font-bold text-sm text-slate-700">1. Identitas Ujian & Bobot Nilai</h2>
         
         <div class="grid grid-cols-2 gap-2.5">
           <div>
@@ -65,10 +46,18 @@
               class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-600" />
           </div>
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Kelas Default</label>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Kelas</label>
             <input type="text" id="inputKelas" placeholder="Contoh: X-A"
               class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-600" />
           </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">
+            Daftar Nama Siswa Kelas Ini <span class="font-normal text-slate-400">(Opsional, 1 baris 1 nama)</span>
+          </label>
+          <textarea id="inputRoster" rows="3" placeholder="Tempel daftar nama siswa dari Excel/WA di sini agar tinggal pilih saat scan..."
+            class="w-full text-xs border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-600"></textarea>
         </div>
 
         <div class="pt-1">
@@ -118,7 +107,7 @@
       <!-- Kunci Jawaban Blok A: Pilihan Ganda -->
       <div class="bg-white rounded-xl shadow-sm p-4 border border-slate-200">
         <div class="flex items-center justify-between mb-3">
-          <h2 class="font-bold text-sm text-slate-700">3. Kunci Jawaban A. Pilihan Ganda</h2>
+          <h2 class="font-bold text-sm text-slate-700">2. Kunci Jawaban A. Pilihan Ganda</h2>
           <span class="text-xs text-slate-500" id="pgKeyProgress">0/20 terisi</span>
         </div>
         <div id="keyContainerPG" class="space-y-2"></div>
@@ -126,14 +115,14 @@
 
       <!-- Kunci Jawaban Blok B: Pilihan Ganda Kompleks -->
       <div class="bg-white rounded-xl shadow-sm p-4 border border-slate-200">
-        <h2 class="font-bold text-sm text-slate-700 mb-1">4. Kunci Jawaban B. PG Kompleks (MCMA)</h2>
+        <h2 class="font-bold text-sm text-slate-700 mb-1">3. Kunci Jawaban B. PG Kompleks (MCMA)</h2>
         <p class="text-xs text-slate-500 mb-3">Centang baris ke-1 s.d. ke-5 (atas ke bawah) yang benar pada tiap nomor soal.</p>
         <div id="keyContainerPGK" class="grid grid-cols-5 gap-2"></div>
       </div>
 
       <!-- Kunci Jawaban Blok C: Pilihan Ganda Kategori (B/S) -->
       <div class="bg-white rounded-xl shadow-sm p-4 border border-slate-200">
-        <h2 class="font-bold text-sm text-slate-700 mb-1">5. Kunci Jawaban C. Benar / Salah (B/S)</h2>
+        <h2 class="font-bold text-sm text-slate-700 mb-1">4. Kunci Jawaban C. Benar / Salah (B/S)</h2>
         <p class="text-xs text-slate-500 mb-3">Pilih B atau S tiap baris (atas ke bawah). Biarkan kosong jika baris tidak dipakai.</p>
         <div id="keyContainerBS" class="space-y-3"></div>
       </div>
@@ -144,81 +133,178 @@
       </button>
     </section>
 
-    <!-- ==================== TAB 2: SCAN LJK ==================== -->
+    <!-- ==================== TAB 2: SCAN LJK (INSTAN LOKAL) ==================== -->
     <section id="tab-scan" class="hidden space-y-4">
-      <div class="bg-white rounded-xl shadow-sm p-4 border border-slate-200 text-center space-y-3">
-        <div class="bg-blue-50 text-blue-800 text-xs p-3 rounded-lg text-left leading-relaxed">
-          <strong>Tips Foto Akurat:</strong> Pastikan seluruh bagian dari <em>Nama/Kelas</em> di atas hingga <em>Blok C (Benar/Salah)</em> masuk frame dengan terang dan tidak berbayang. Bagian D (Uraian) otomatis diabaikan.
-        </div>
-
-        <div class="grid grid-cols-2 gap-3 pt-1">
-          <label class="cursor-pointer bg-blue-700 active:bg-blue-800 text-white font-bold py-4 px-3 rounded-xl shadow flex flex-col items-center justify-center gap-1.5">
-            <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      
+      <!-- Mode Selector Buttons -->
+      <div class="bg-white rounded-xl shadow-sm p-3 border border-slate-200 space-y-2.5">
+        <div class="grid grid-cols-2 gap-2">
+          <button type="button" onclick="startLiveCamera()" id="btnOpenCam"
+            class="bg-blue-700 active:bg-blue-800 text-white font-bold py-3 px-2 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
               <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
             </svg>
-            <span class="text-xs">Ambil Foto Kamera</span>
-            <input type="file" accept="image/*" capture="environment" class="hidden" onchange="handleImageSelected(event)" />
-          </label>
+            <span>Kamera Langsung</span>
+          </button>
 
-          <label class="cursor-pointer bg-slate-700 active:bg-slate-800 text-white font-bold py-4 px-3 rounded-xl shadow flex flex-col items-center justify-center gap-1.5">
-            <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <label class="cursor-pointer bg-slate-700 active:bg-slate-800 text-white font-bold py-3 px-2 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
             </svg>
-            <span class="text-xs">Pilih dari Galeri</span>
-            <input type="file" accept="image/*" class="hidden" onchange="handleImageSelected(event)" />
+            <span>Pilih Foto Galeri</span>
+            <input type="file" accept="image/*" class="hidden" onchange="handleGalleryFile(event)" />
           </label>
+        </div>
+        <p class="text-[11px] text-slate-500 text-center">
+          Paskan tepi kertas LJK ke bingkai garis bantu kuning agar pembacaan kotak 100% presisi.
+        </p>
+      </div>
+
+      <!-- LIVE CAMERA VIEWFINDER WITH SVG GUIDE -->
+      <div id="liveCameraBox" class="hidden bg-slate-900 rounded-xl p-3 space-y-3 shadow-md">
+        <div class="relative w-full max-w-[330px] mx-auto aspect-[900/1272] bg-black rounded-lg overflow-hidden border-2 border-yellow-400">
+          <video id="cameraVideo" autoplay playsinline muted class="w-full h-full object-cover"></video>
+          <!-- Wireframe Guide SVG -->
+          <svg viewBox="0 0 900 1272" class="absolute inset-0 w-full h-full pointer-events-none">
+            <!-- Outer paper margin guide -->
+            <rect x="18" y="18" width="864" height="1236" fill="none" stroke="#facc15" stroke-width="4" stroke-dasharray="16,10" />
+            <!-- Header Identity Zone -->
+            <rect x="45" y="145" width="810" height="75" fill="none" stroke="#38bdf8" stroke-width="2" stroke-dasharray="8,6" />
+            <text x="60" y="175" fill="#38bdf8" font-size="22" font-weight="bold">AREA NAMA & KELAS</text>
+            <!-- PG Blocks Guide -->
+            <rect x="75" y="470" width="210" height="125" fill="none" stroke="#4ade80" stroke-width="3" />
+            <rect x="358" y="470" width="210" height="125" fill="none" stroke="#4ade80" stroke-width="3" />
+            <rect x="640" y="470" width="210" height="125" fill="none" stroke="#4ade80" stroke-width="3" />
+            <rect x="75" y="624" width="210" height="125" fill="none" stroke="#4ade80" stroke-width="3" />
+            <rect x="358" y="624" width="210" height="125" fill="none" stroke="#4ade80" stroke-width="3" />
+            <!-- PGK & BS Guide -->
+            <rect x="55" y="805" width="280" height="140" fill="none" stroke="#f472b6" stroke-width="3" />
+            <rect x="420" y="805" width="435" height="140" fill="none" stroke="#fb923c" stroke-width="3" />
+            <!-- Bottom Footer Anchor Line -->
+            <line x1="35" y1="1148" x2="865" y2="1148" stroke="#facc15" stroke-width="5" />
+            <text x="450" y="1136" text-anchor="middle" fill="#facc15" font-size="20" font-weight="bold">GARIS PEMBATAS BAWAH</text>
+          </svg>
+        </div>
+
+        <div class="flex gap-2">
+          <button type="button" onclick="stopLiveCamera()"
+            class="w-1/3 py-3 rounded-xl bg-slate-700 text-white font-semibold text-xs">
+            Tutup Kamera
+          </button>
+          <button type="button" onclick="captureFromLiveCamera()"
+            class="w-2/3 py-3 rounded-xl bg-emerald-500 active:bg-emerald-600 text-slate-950 font-extrabold text-sm shadow">
+            ⚡ Jepret & Koreksi Sekarang
+          </button>
         </div>
       </div>
 
-      <!-- Loading Indicator -->
-      <div id="scanLoadingBox" class="hidden bg-white rounded-xl shadow-sm p-6 border border-blue-200 text-center space-y-3">
-        <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-        <p class="font-bold text-sm text-slate-700">Sedang Membaca Lembar Jawab...</p>
-        <p class="text-xs text-slate-500">Mendeteksi nama siswa, silang PG, ralat (=), centang PGK, dan B/S.</p>
+      <!-- GALLERY ALIGNMENT FRAME -->
+      <div id="galleryAlignBox" class="hidden bg-slate-900 rounded-xl p-3 space-y-3 shadow-md">
+        <p class="text-xs text-yellow-300 text-center font-medium">
+          Geser & perbesar foto agar tepi kertas pas dengan garis kuning:
+        </p>
+        <div id="alignViewport" class="relative w-full max-w-[330px] mx-auto aspect-[900/1272] bg-black rounded-lg overflow-hidden border-2 border-yellow-400 touch-none-area">
+          <canvas id="alignPreviewCanvas" width="900" height="1272" class="w-full h-full"></canvas>
+          <!-- Wireframe Guide SVG -->
+          <svg viewBox="0 0 900 1272" class="absolute inset-0 w-full h-full pointer-events-none">
+            <rect x="18" y="18" width="864" height="1236" fill="none" stroke="#facc15" stroke-width="4" stroke-dasharray="16,10" />
+            <rect x="75" y="470" width="210" height="125" fill="none" stroke="#4ade80" stroke-width="3" />
+            <rect x="358" y="470" width="210" height="125" fill="none" stroke="#4ade80" stroke-width="3" />
+            <rect x="640" y="470" width="210" height="125" fill="none" stroke="#4ade80" stroke-width="3" />
+            <rect x="75" y="624" width="210" height="125" fill="none" stroke="#4ade80" stroke-width="3" />
+            <rect x="358" y="624" width="210" height="125" fill="none" stroke="#4ade80" stroke-width="3" />
+            <rect x="55" y="805" width="280" height="140" fill="none" stroke="#f472b6" stroke-width="3" />
+            <rect x="420" y="805" width="435" height="140" fill="none" stroke="#fb923c" stroke-width="3" />
+            <line x1="35" y1="1148" x2="865" y2="1148" stroke="#facc15" stroke-width="5" />
+          </svg>
+        </div>
+
+        <div class="px-2 space-y-1">
+          <div class="flex justify-between text-[11px] text-slate-300">
+            <span>Zoom Foto</span>
+            <span id="galleryZoomLabel">100%</span>
+          </div>
+          <input type="range" id="galleryZoomSlider" min="50" max="200" value="100" oninput="updateGalleryTransform()" class="w-full accent-yellow-400" />
+        </div>
+
+        <div class="flex gap-2">
+          <button type="button" onclick="closeGalleryAlign()"
+            class="w-1/3 py-3 rounded-xl bg-slate-700 text-white font-semibold text-xs">
+            Batal
+          </button>
+          <button type="button" onclick="processAlignedGalleryImage()"
+            class="w-2/3 py-3 rounded-xl bg-emerald-500 active:bg-emerald-600 text-slate-950 font-extrabold text-sm shadow">
+            ⚡ Proses & Koreksi Sekarang
+          </button>
+        </div>
       </div>
 
-      <!-- Error Box -->
-      <div id="scanErrorBox" class="hidden bg-red-50 border border-red-300 text-red-800 rounded-xl p-4 text-xs space-y-2">
-        <p class="font-bold text-sm">Gagal Memproses Gambar</p>
-        <p id="scanErrorText"></p>
-      </div>
-
-      <!-- Verification & Quick Edit Card -->
-      <div id="scanResultBox" class="hidden bg-white rounded-xl shadow-md p-4 border-2 border-blue-500 space-y-4">
+      <!-- VERIFICATION & QUICK EDIT CARD -->
+      <div id="scanResultBox" class="hidden bg-white rounded-xl shadow-md p-4 border-2 border-blue-600 space-y-4">
         <div class="flex items-center justify-between border-b pb-2">
-          <h3 class="font-bold text-sm text-blue-800">Hasil Pembacaan (Cek & Simpan)</h3>
+          <div>
+            <h3 class="font-bold text-sm text-blue-800">Hasil Koreksi Instan</h3>
+            <p class="text-[11px] text-slate-500">Hijau = Benar • Merah = Salah • Kuning = Cek Ralat</p>
+          </div>
           <span id="previewTotalScore" class="bg-blue-700 text-white font-bold text-sm px-3 py-1 rounded-full">
             Nilai: 0
           </span>
         </div>
 
-        <!-- Thumbnail Foto -->
-        <div class="flex gap-3 items-start">
-          <img id="previewImageThumb" src="" alt="Preview LJK" onclick="toggleZoomImage()"
-            class="w-24 h-32 object-cover rounded-lg border border-slate-300 cursor-pointer shrink-0" />
-          <div class="flex-1 space-y-2">
-            <div>
-              <label class="block text-[11px] font-semibold text-slate-500">Nama Siswa (Edit jika perlu)</label>
-              <input type="text" id="detectedNama"
-                class="w-full text-sm font-bold border border-slate-300 rounded-lg px-2.5 py-1.5 focus:border-blue-600 focus:outline-none" />
+        <!-- Visual Annotated Canvas Preview -->
+        <div class="space-y-2">
+          <div class="relative w-full max-w-[300px] mx-auto aspect-[900/1272] rounded-lg overflow-hidden border border-slate-300 shadow-inner bg-slate-100">
+            <canvas id="annotatedResultCanvas" width="900" height="1272" class="w-full h-full cursor-pointer" onclick="toggleZoomCanvas()"></canvas>
+          </div>
+
+          <!-- Collapsible Calibration Controls -->
+          <details class="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs">
+            <summary class="font-semibold text-slate-700 cursor-pointer select-none">
+              ⚙️ Kalibrasi Posisi Kotak (Klik jika kotak kurang pas)
+            </summary>
+            <div class="mt-2.5 space-y-2 pt-2 border-t border-slate-200">
+              <div>
+                <div class="flex justify-between text-[11px]"><span>Geser Kiri / Kanan</span><span id="calXVal">0 px</span></div>
+                <input type="range" id="calXSlider" min="-60" max="60" value="0" oninput="onCalibrationChange()" class="w-full" />
+              </div>
+              <div>
+                <div class="flex justify-between text-[11px]"><span>Geser Atas / Bawah</span><span id="calYVal">0 px</span></div>
+                <input type="range" id="calYSlider" min="-60" max="60" value="0" oninput="onCalibrationChange()" class="w-full" />
+              </div>
+              <div>
+                <div class="flex justify-between text-[11px]"><span>Skala Lebar/Tinggi Kotak</span><span id="calScaleVal">100%</span></div>
+                <input type="range" id="calScaleSlider" min="90" max="110" value="100" oninput="onCalibrationChange()" class="w-full" />
+              </div>
+              <button type="button" onclick="resetCalibration()" class="text-[11px] text-blue-700 font-semibold underline">
+                Reset Kalibrasi ke Default
+              </button>
             </div>
-            <div class="grid grid-cols-2 gap-2">
-              <div>
-                <label class="block text-[11px] font-semibold text-slate-500">Kelas</label>
-                <input type="text" id="detectedKelas"
-                  class="w-full text-xs font-semibold border border-slate-300 rounded-lg px-2.5 py-1.5" />
-              </div>
-              <div>
-                <label class="block text-[11px] font-semibold text-slate-500">No. Peserta</label>
-                <input type="text" id="detectedNoPeserta"
-                  class="w-full text-xs border border-slate-300 rounded-lg px-2.5 py-1.5" />
-              </div>
+          </details>
+        </div>
+
+        <!-- Student Identity Input -->
+        <div class="bg-blue-50/70 p-3 rounded-xl border border-blue-200 space-y-2">
+          <div>
+            <label class="block text-[11px] font-bold text-slate-700 mb-1">Pilih / Ketik Nama Siswa</label>
+            <select id="rosterSelect" onchange="onRosterSelectChange()" class="hidden w-full text-xs border border-slate-300 rounded-lg px-2.5 py-2 bg-white mb-1.5 font-semibold text-slate-800">
+            </select>
+            <input type="text" id="detectedNama" placeholder="Ketik nama siswa..."
+              class="w-full text-sm font-bold border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white focus:border-blue-600 focus:outline-none" />
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600">Kelas</label>
+              <input type="text" id="detectedKelas"
+                class="w-full text-xs font-semibold border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600">No. Absen / Peserta</label>
+              <input type="text" id="detectedNoPeserta" placeholder="Opsional"
+                class="w-full text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white" />
             </div>
           </div>
         </div>
-
-        <p id="aiNoteBanner" class="hidden text-[11px] bg-amber-50 border border-amber-200 text-amber-800 p-2 rounded-lg"></p>
 
         <!-- Rincian Skor per Bagian -->
         <div class="grid grid-cols-3 gap-2 text-center bg-slate-50 p-2 rounded-lg border border-slate-200 text-xs">
@@ -239,17 +325,17 @@
         <!-- Koreksi Cepat Jawaban Terdeteksi -->
         <div class="space-y-3">
           <div>
-            <h4 class="text-xs font-bold text-slate-700 mb-1.5">A. Pilihan Ganda (Tap huruf untuk koreksi manual)</h4>
+            <h4 class="text-xs font-bold text-slate-700 mb-1.5">A. Pilihan Ganda (Tap nomor jika perlu ubah manual)</h4>
             <div id="previewGridPG" class="grid grid-cols-5 gap-1.5"></div>
           </div>
 
           <div>
-            <h4 class="text-xs font-bold text-slate-700 mb-1.5">B. PG Kompleks (Tap kotak baris 1–5 untuk koreksi)</h4>
+            <h4 class="text-xs font-bold text-slate-700 mb-1.5">B. PG Kompleks (Tap kotak baris 1–5 untuk ubah)</h4>
             <div id="previewGridPGK" class="grid grid-cols-5 gap-1.5"></div>
           </div>
 
           <div>
-            <h4 class="text-xs font-bold text-slate-700 mb-1.5">C. Benar / Salah (Tap B/S per baris untuk koreksi)</h4>
+            <h4 class="text-xs font-bold text-slate-700 mb-1.5">C. Benar / Salah (Tap B/S per baris untuk ubah)</h4>
             <div id="previewGridBS" class="space-y-2"></div>
           </div>
         </div>
@@ -269,7 +355,6 @@
 
     <!-- ==================== TAB 3: REKAP & ANALISIS ==================== -->
     <section id="tab-analysis" class="hidden space-y-4">
-      <!-- Ringkasan Statistik Kelas -->
       <div class="bg-white rounded-xl shadow-sm p-4 border border-slate-200">
         <div class="flex items-center justify-between mb-3">
           <div>
@@ -374,9 +459,9 @@
 
   </main>
 
-  <!-- Zoom Image Modal -->
-  <div id="zoomModal" onclick="toggleZoomImage()" class="hidden fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-2">
-    <img id="zoomedImage" src="" class="max-w-full max-h-full rounded" />
+  <!-- Zoom Modal -->
+  <div id="zoomModal" onclick="toggleZoomCanvas()" class="hidden fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-2">
+    <img id="zoomedResultImg" src="" class="max-w-full max-h-full rounded" />
   </div>
 
   <!-- Toast Notification -->
@@ -417,29 +502,69 @@
   </nav>
 
 <script>
-  // ==================== STATE MANAGEMENT ====================
-  const STORAGE_KEY = 'ljk_sas_darussalam_v1';
+  // ==================== CONSTANTS & GEOMETRY MAPPING (SMA ISLAM DARUSSALAM SAS) ====================
+  const STORAGE_KEY = 'ljk_sas_local_omr_v2';
+  const CANON_W = 900;
+  const CANON_H = 1272;
+
+  // Normalized coordinates (0..1) mapped directly to the SAS Gasal Answer Sheet layout
+  const SHEET_MAP = {
+    pgBlocks: [
+      { startQ: 1,  xLeft: 0.088, xRight: 0.313, yTop: 0.372, yBottom: 0.468 },
+      { startQ: 6,  xLeft: 0.088, xRight: 0.313, yTop: 0.493, yBottom: 0.589 },
+      { startQ: 11, xLeft: 0.402, xRight: 0.627, yTop: 0.372, yBottom: 0.468 },
+      { startQ: 16, xLeft: 0.402, xRight: 0.627, yTop: 0.493, yBottom: 0.589 },
+      { startQ: 21, xLeft: 0.715, xRight: 0.940, yTop: 0.372, yBottom: 0.468 }
+    ],
+    // Blok B: 5 vertical columns (1..5), each has 5 vertical boxes (top to bottom)
+    pgkCols: [
+      { q: 1, x0: 0.068, x1: 0.104, yTop: 0.635, yBottom: 0.742 },
+      { q: 2, x0: 0.132, x1: 0.168, yTop: 0.635, yBottom: 0.742 },
+      { q: 3, x0: 0.197, x1: 0.233, yTop: 0.635, yBottom: 0.742 },
+      { q: 4, x0: 0.262, x1: 0.298, yTop: 0.635, yBottom: 0.742 },
+      { q: 5, x0: 0.327, x1: 0.363, yTop: 0.635, yBottom: 0.742 }
+    ],
+    // Blok C: 5 mini-tables (1..5), each has 5 rows (below B/S header) and 2 columns (B, S)
+    bsTables: [
+      { q: 1, xB0: 0.472, xB1: 0.506, xS0: 0.506, xS1: 0.540, yTop: 0.653, yBottom: 0.742 },
+      { q: 2, xB0: 0.573, xB1: 0.607, xS0: 0.607, xS1: 0.641, yTop: 0.653, yBottom: 0.742 },
+      { q: 3, xB0: 0.674, xB1: 0.708, xS0: 0.708, xS1: 0.742, yTop: 0.653, yBottom: 0.742 },
+      { q: 4, xB0: 0.775, xB1: 0.809, xS0: 0.809, xS1: 0.843, yTop: 0.653, yBottom: 0.742 },
+      { q: 5, xB0: 0.876, xB1: 0.910, xS0: 0.910, xS1: 0.944, yTop: 0.653, yBottom: 0.742 }
+    ]
+  };
 
   let appState = {
-    apiKey: '',
-    model: 'gemini-2.5-flash',
     mapel: '',
     kelas: '',
+    rosterText: '',
     pgCount: 20,
     bobotPG: 2,
     bobotPGK: 6,
     bobotBS: 6,
+    calX: 0,
+    calY: 0,
+    calScale: 100,
     keys: {
-      pg: {},   // { "1": "A", ... }
-      pgk: {},  // { "1": [1, 3], ... } (1-based row indices)
-      bs: {}    // { "1": ["B", "S", "B", "", ""], ... } (5 rows per question)
+      pg: {},
+      pgk: {},
+      bs: {}
     },
-    students: [] // Array of evaluated student objects
+    students: []
   };
 
-  let currentScan = null; // Holds temporary scan result before saving
+  let cameraStream = null;
+  let galleryImgObj = null;
+  let galleryTransform = { x: 0, y: 0, scale: 1 };
+  let dragStart = null;
 
-  // Initialize default empty structures
+  // Offscreen clean canvas holding the aligned 900x1272 image for instant re-scanning
+  const sourceWorkCanvas = document.createElement('canvas');
+  sourceWorkCanvas.width = CANON_W;
+  sourceWorkCanvas.height = CANON_H;
+
+  let currentScan = null;
+
   function ensureKeyStructures() {
     for (let i = 1; i <= 25; i++) {
       if (!appState.keys.pg[i]) appState.keys.pg[i] = '';
@@ -456,24 +581,25 @@
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
-        const parsed = JSON.parse(saved);
-        appState = { ...appState, ...parsed };
+        appState = { ...appState, ...JSON.parse(saved) };
       } catch (e) {
-        console.error('Gagal memuat data tersimpan:', e);
+        console.error(e);
       }
     }
     ensureKeyStructures();
 
-    // Populate UI fields
-    document.getElementById('apiKeyInput').value = appState.apiKey || '';
-    document.getElementById('geminiModelSelect').value = appState.model || 'gemini-2.5-flash';
     document.getElementById('inputMapel').value = appState.mapel || '';
     document.getElementById('inputKelas').value = appState.kelas || '';
+    document.getElementById('inputRoster').value = appState.rosterText || '';
     document.getElementById('bobotPG').value = appState.bobotPG;
     document.getElementById('bobotPGK').value = appState.bobotPGK;
     document.getElementById('bobotBS').value = appState.bobotBS;
 
-    updateApiBadge();
+    document.getElementById('calXSlider').value = appState.calX || 0;
+    document.getElementById('calYSlider').value = appState.calY || 0;
+    document.getElementById('calScaleSlider').value = appState.calScale || 100;
+    updateCalibrationLabels();
+
     setPgCount(appState.pgCount, false);
     renderKeyInputs();
     updateHeaderInfo();
@@ -488,10 +614,12 @@
     const t = document.getElementById('toastBox');
     t.textContent = msg;
     t.classList.remove('hidden');
-    setTimeout(() => t.classList.add('hidden'), 2600);
+    setTimeout(() => t.classList.add('hidden'), 2400);
   }
 
   function switchTab(tabName) {
+    if (tabName !== 'scan') stopLiveCamera();
+
     ['setup', 'scan', 'analysis', 'export'].forEach(name => {
       document.getElementById('tab-' + name).classList.add('hidden');
       const nav = document.getElementById('nav-' + name);
@@ -508,22 +636,6 @@
   }
 
   // ==================== SETUP & KUNCI JAWABAN ====================
-  function toggleApiVisibility() {
-    const inp = document.getElementById('apiKeyInput');
-    inp.type = inp.type === 'password' ? 'text' : 'password';
-  }
-
-  function updateApiBadge() {
-    const badge = document.getElementById('apiStatusBadge');
-    if (appState.apiKey && appState.apiKey.trim().length > 10) {
-      badge.textContent = 'Terpasang';
-      badge.className = 'text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold';
-    } else {
-      badge.textContent = 'Wajib diisi';
-      badge.className = 'text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-medium';
-    }
-  }
-
   function setPgCount(count, reRender = true) {
     appState.pgCount = count;
     const btn20 = document.getElementById('btnPg20');
@@ -682,15 +794,13 @@
   }
 
   function saveAllConfig(notify = false) {
-    appState.apiKey = document.getElementById('apiKeyInput').value.trim();
-    appState.model = document.getElementById('geminiModelSelect').value;
     appState.mapel = document.getElementById('inputMapel').value.trim();
     appState.kelas = document.getElementById('inputKelas').value.trim();
+    appState.rosterText = document.getElementById('inputRoster').value;
     appState.bobotPG = parseFloat(document.getElementById('bobotPG').value) || 0;
     appState.bobotPGK = parseFloat(document.getElementById('bobotPGK').value) || 0;
     appState.bobotBS = parseFloat(document.getElementById('bobotBS').value) || 0;
 
-    updateApiBadge();
     saveStateToStorage();
     if (notify) showToast('Pengaturan & Kunci Jawaban tersimpan!');
   }
@@ -702,171 +812,503 @@
     document.getElementById('headerCountBadge').textContent = `${appState.students.length} Siswa`;
   }
 
-  // ==================== IMAGE PROCESSING & GEMINI VISION ====================
-  function compressImageToBase64(file, maxDim = 1600, quality = 0.85) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          let w = img.width;
-          let h = img.height;
-          if (w > maxDim || h > maxDim) {
-            if (w > h) {
-              h = Math.round((h * maxDim) / w);
-              w = maxDim;
-            } else {
-              w = Math.round((w * maxDim) / h);
-              h = maxDim;
-            }
-          }
-          const canvas = document.createElement('canvas');
-          canvas.width = w;
-          canvas.height = h;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, w, h);
-          const dataUrl = canvas.toDataURL('image/jpeg', quality);
-          resolve({
-            dataUrl,
-            base64: dataUrl.split(',')[1]
-          });
-        };
-        img.onerror = reject;
-        img.src = e.target.result;
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
+  // ==================== LIVE CAMERA & GALLERY ALIGNMENT ====================
+  async function startLiveCamera() {
+    saveAllConfig(false);
+    closeGalleryAlign();
+    document.getElementById('scanResultBox').classList.add('hidden');
+
+    try {
+      stopLiveCamera();
+      cameraStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        },
+        audio: false
+      });
+      const video = document.getElementById('cameraVideo');
+      video.srcObject = cameraStream;
+      document.getElementById('liveCameraBox').classList.remove('hidden');
+    } catch (err) {
+      alert('Tidak dapat membuka kamera langsung (' + err.message + '). Gunakan tombol "Pilih Foto Galeri".');
+    }
   }
 
-  async function handleImageSelected(event) {
+  function stopLiveCamera() {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(t => t.stop());
+      cameraStream = null;
+    }
+    document.getElementById('liveCameraBox').classList.add('hidden');
+  }
+
+  function captureFromLiveCamera() {
+    const video = document.getElementById('cameraVideo');
+    if (!video || !video.videoWidth) return;
+
+    const targetRatio = CANON_W / CANON_H;
+    const vidRatio = video.videoWidth / video.videoHeight;
+    let sx = 0, sy = 0, sw = video.videoWidth, sh = video.videoHeight;
+
+    if (vidRatio > targetRatio) {
+      sw = video.videoHeight * targetRatio;
+      sx = (video.videoWidth - sw) / 2;
+    } else {
+      sh = video.videoWidth / targetRatio;
+      sy = (video.videoHeight - sh) / 2;
+    }
+
+    const ctx = sourceWorkCanvas.getContext('2d');
+    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, CANON_W, CANON_H);
+
+    stopLiveCamera();
+    runLocalOMRScan();
+  }
+
+  function handleGalleryFile(event) {
     const file = event.target.files[0];
     if (!file) return;
-    event.target.value = ''; // reset input so same file can be re-selected
+    event.target.value = '';
 
     saveAllConfig(false);
+    stopLiveCamera();
+    document.getElementById('scanResultBox').classList.add('hidden');
 
-    if (!appState.apiKey) {
-      showToast('Masukkan Gemini API Key dulu di tab Setup!');
-      switchTab('setup');
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        galleryImgObj = img;
+        // Fit image nicely into 900x1272 viewport initially
+        const scaleX = CANON_W / img.width;
+        const scaleY = CANON_H / img.height;
+        const baseScale = Math.max(scaleX, scaleY);
+        const drawW = img.width * baseScale;
+        const drawH = img.height * baseScale;
+
+        galleryTransform = {
+          scale: baseScale,
+          baseScale: baseScale,
+          x: (CANON_W - drawW) / 2,
+          y: (CANON_H - drawH) / 2
+        };
+
+        document.getElementById('galleryZoomSlider').value = 100;
+        document.getElementById('galleryZoomLabel').textContent = '100%';
+        document.getElementById('galleryAlignBox').classList.remove('hidden');
+        drawGalleryAlignCanvas();
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function drawGalleryAlignCanvas() {
+    if (!galleryImgObj) return;
+    const canvas = document.getElementById('alignPreviewCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, CANON_W, CANON_H);
+    ctx.drawImage(
+      galleryImgObj,
+      galleryTransform.x,
+      galleryTransform.y,
+      galleryImgObj.width * galleryTransform.scale,
+      galleryImgObj.height * galleryTransform.scale
+    );
+  }
+
+  function updateGalleryTransform() {
+    if (!galleryImgObj) return;
+    const pct = parseInt(document.getElementById('galleryZoomSlider').value, 10);
+    document.getElementById('galleryZoomLabel').textContent = `${pct}%`;
+
+    const oldScale = galleryTransform.scale;
+    const newScale = galleryTransform.baseScale * (pct / 100);
+
+    // Zoom around center of viewport
+    const cx = CANON_W / 2;
+    const cy = CANON_H / 2;
+    galleryTransform.x = cx - ((cx - galleryTransform.x) * (newScale / oldScale));
+    galleryTransform.y = cy - ((cy - galleryTransform.y) * (newScale / oldScale));
+    galleryTransform.scale = newScale;
+
+    drawGalleryAlignCanvas();
+  }
+
+  // Pan/drag handlers for Gallery Alignment Viewport
+  (function initAlignPanEvents() {
+    const vp = document.getElementById('alignViewport');
+    vp.addEventListener('pointerdown', (e) => {
+      dragStart = { clientX: e.clientX, clientY: e.clientY, origX: galleryTransform.x, origY: galleryTransform.y };
+      vp.setPointerCapture(e.pointerId);
+    });
+    vp.addEventListener('pointermove', (e) => {
+      if (!dragStart) return;
+      const rect = vp.getBoundingClientRect();
+      const ratioX = CANON_W / rect.width;
+      const ratioY = CANON_H / rect.height;
+      galleryTransform.x = dragStart.origX + (e.clientX - dragStart.clientX) * ratioX;
+      galleryTransform.y = dragStart.origY + (e.clientY - dragStart.clientY) * ratioY;
+      drawGalleryAlignCanvas();
+    });
+    vp.addEventListener('pointerup', () => { dragStart = null; });
+    vp.addEventListener('pointercancel', () => { dragStart = null; });
+  })();
+
+  function closeGalleryAlign() {
+    document.getElementById('galleryAlignBox').classList.add('hidden');
+  }
+
+  function processAlignedGalleryImage() {
+    if (!galleryImgObj) return;
+    const ctx = sourceWorkCanvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, CANON_W, CANON_H);
+    ctx.drawImage(
+      galleryImgObj,
+      galleryTransform.x,
+      galleryTransform.y,
+      galleryImgObj.width * galleryTransform.scale,
+      galleryImgObj.height * galleryTransform.scale
+    );
+    closeGalleryAlign();
+    runLocalOMRScan();
+  }
+
+  // ==================== LOCAL OMR ENGINE (INSTANT PIXEL ANALYSIS) ====================
+  function updateCalibrationLabels() {
+    document.getElementById('calXVal').textContent = `${appState.calX} px`;
+    document.getElementById('calYVal').textContent = `${appState.calY} px`;
+    document.getElementById('calScaleVal').textContent = `${appState.calScale}%`;
+  }
+
+  function onCalibrationChange() {
+    appState.calX = parseInt(document.getElementById('calXSlider').value, 10) || 0;
+    appState.calY = parseInt(document.getElementById('calYSlider').value, 10) || 0;
+    appState.calScale = parseInt(document.getElementById('calScaleSlider').value, 10) || 100;
+    updateCalibrationLabels();
+    saveStateToStorage();
+    runLocalOMRScan(true);
+  }
+
+  function resetCalibration() {
+    appState.calX = 0;
+    appState.calY = 0;
+    appState.calScale = 100;
+    document.getElementById('calXSlider').value = 0;
+    document.getElementById('calYSlider').value = 0;
+    document.getElementById('calScaleSlider').value = 100;
+    updateCalibrationLabels();
+    saveStateToStorage();
+    runLocalOMRScan(true);
+  }
+
+  function mapRectWithCal(nx, ny, nw, nh) {
+    const scale = (appState.calScale || 100) / 100;
+    const dx = appState.calX || 0;
+    const dy = appState.calY || 0;
+
+    // Scale relative to center of answer region (450, 720)
+    const cx = 450;
+    const cy = 720;
+    const rawX = nx * CANON_W;
+    const rawY = ny * CANON_H;
+    const rawW = nw * CANON_W;
+    const rawH = nh * CANON_H;
+
+    return {
+      x: cx + (rawX - cx) * scale + dx,
+      y: cy + (rawY - cy) * scale + dy,
+      w: rawW * scale,
+      h: rawH * scale
+    };
+  }
+
+  function buildAdaptiveBinaryMask(imgData) {
+    const { width, height, data } = imgData;
+    const gray = new Uint8Array(width * height);
+
+    for (let i = 0, p = 0; i < data.length; i += 4, p++) {
+      gray[p] = (data[i] * 77 + data[i + 1] * 150 + data[i + 2] * 29) >> 8;
+    }
+
+    // Tile-based local background estimation (handles shadows & uneven lighting)
+    const tileSize = 45;
+    const cols = Math.ceil(width / tileSize);
+    const rows = Math.ceil(height / tileSize);
+    const tileBg = new Uint8Array(cols * rows);
+
+    for (let tr = 0; tr < rows; tr++) {
+      for (let tc = 0; tc < cols; tc++) {
+        const xStart = tc * tileSize;
+        const yStart = tr * tileSize;
+        const xEnd = Math.min(width, xStart + tileSize);
+        const yEnd = Math.min(height, yStart + tileSize);
+
+        // Sample histogram for 80th percentile brightness (white paper level)
+        const hist = new Uint16Array(256);
+        let count = 0;
+        for (let y = yStart; y < yEnd; y += 2) {
+          const rowOff = y * width;
+          for (let x = xStart; x < xEnd; x += 2) {
+            hist[gray[rowOff + x]]++;
+            count++;
+          }
+        }
+        const targetRank = Math.floor(count * 0.80);
+        let acc = 0;
+        let p80 = 200;
+        for (let v = 0; v < 256; v++) {
+          acc += hist[v];
+          if (acc >= targetRank) {
+            p80 = v;
+            break;
+          }
+        }
+        tileBg[tr * cols + tc] = p80;
+      }
+    }
+
+    const mask = new Uint8Array(width * height);
+    for (let y = 0; y < height; y++) {
+      const tr = Math.min(rows - 1, Math.floor(y / tileSize));
+      const rowOff = y * width;
+      for (let x = 0; x < width; x++) {
+        const tc = Math.min(cols - 1, Math.floor(x / tileSize));
+        const bg = tileBg[tr * cols + tc];
+        const lum = gray[rowOff + x];
+        // Ink pixel if noticeably darker than local paper background
+        if (bg - lum > 36 && lum < 195) {
+          mask[rowOff + x] = 1;
+        }
+      }
+    }
+    return mask;
+  }
+
+  function measureBoxFillRatio(mask, width, height, rect, padRatio = 0.18) {
+    const x0 = Math.max(0, Math.round(rect.x + rect.w * padRatio));
+    const y0 = Math.max(0, Math.round(rect.y + rect.h * padRatio));
+    const x1 = Math.min(width - 1, Math.round(rect.x + rect.w * (1 - padRatio)));
+    const y1 = Math.min(height - 1, Math.round(rect.y + rect.h * (1 - padRatio)));
+
+    if (x1 <= x0 || y1 <= y0) return 0;
+
+    let dark = 0;
+    let total = 0;
+    for (let y = y0; y <= y1; y++) {
+      const rowOff = y * width;
+      for (let x = x0; x <= x1; x++) {
+        dark += mask[rowOff + x];
+        total++;
+      }
+    }
+    return total > 0 ? dark / total : 0;
+  }
+
+  function runLocalOMRScan(isRecalibration = false) {
+    const ctx = sourceWorkCanvas.getContext('2d');
+    const imgData = ctx.getImageData(0, 0, CANON_W, CANON_H);
+    const mask = buildAdaptiveBinaryMask(imgData);
+
+    const detectedPG = {};
+    const doubtfulPG = {};
+    const overlayRects = []; // { rect, color }
+
+    const opts = ['A', 'B', 'C', 'D', 'E'];
+
+    // 1. Scan Blok A (Pilihan Ganda)
+    SHEET_MAP.pgBlocks.forEach(blk => {
+      const totalGridW = blk.xRight - blk.xLeft;
+      const colW = totalGridW / 6; // Col 0 is question number, Cols 1..5 are A..E
+      const rowH = (blk.yBottom - blk.yTop) / 5;
+
+      for (let r = 0; r < 5; r++) {
+        const qNum = blk.startQ + r;
+        if (qNum > appState.pgCount) continue;
+
+        const rowCells = [];
+        for (let c = 0; c < 5; c++) {
+          const nx = blk.xLeft + (c + 1) * colW;
+          const ny = blk.yTop + r * rowH;
+          const rect = mapRectWithCal(nx, ny, colW, rowH);
+          const fill = measureBoxFillRatio(mask, CANON_W, CANON_H, rect, 0.17);
+          rowCells.push({ opt: opts[c], rect, fill });
+        }
+
+        // Compare against lightest box in same row (removes printed letter baseline)
+        const minFill = Math.min(...rowCells.map(c => c.fill));
+        const marked = rowCells
+          .map(c => ({ ...c, delta: c.fill - minFill }))
+          .filter(c => c.delta > 0.11 && c.fill > 0.20)
+          .sort((a, b) => b.fill - a.fill);
+
+        let chosenOpt = '';
+        let isDoubtful = false;
+
+        if (marked.length === 1) {
+          chosenOpt = marked[0].opt;
+        } else if (marked.length >= 2) {
+          // Handle rule #3: cancelled box with '=' + '[X]' has much heavier ink than valid '[X]'
+          if (marked[0].fill > 0.46 && marked[1].fill <= 0.44) {
+            chosenOpt = marked[1].opt;
+            isDoubtful = true;
+          } else {
+            chosenOpt = marked[0].opt;
+            isDoubtful = true;
+          }
+        }
+
+        detectedPG[qNum] = chosenOpt;
+        doubtfulPG[qNum] = isDoubtful;
+
+        // Draw overlay rects for visual feedback
+        const keyOpt = appState.keys.pg[qNum] || '';
+        rowCells.forEach(cell => {
+          if (cell.opt === chosenOpt) {
+            const isCorrect = keyOpt !== '' && chosenOpt === keyOpt;
+            overlayRects.push({
+              rect: cell.rect,
+              color: isDoubtful ? '#eab308' : (isCorrect ? '#16a34a' : '#dc2626')
+            });
+          } else {
+            overlayRects.push({ rect: cell.rect, color: 'rgba(148,163,184,0.35)' });
+          }
+        });
+      }
+    });
+
+    // 2. Scan Blok B (PG Kompleks - 5 columns x 5 blank vertical boxes)
+    const detectedPGK = {};
+    SHEET_MAP.pgkCols.forEach(colInfo => {
+      const boxW = colInfo.x1 - colInfo.x0;
+      const boxH = (colInfo.yBottom - colInfo.yTop) / 5;
+      const checkedRows = [];
+      const rowCells = [];
+
+      for (let r = 0; r < 5; r++) {
+        const ny = colInfo.yTop + r * boxH;
+        const rect = mapRectWithCal(colInfo.x0, ny, boxW, boxH);
+        const fill = measureBoxFillRatio(mask, CANON_W, CANON_H, rect, 0.18);
+        const isChecked = fill > 0.10;
+        if (isChecked) checkedRows.push(r + 1);
+        rowCells.push({ r: r + 1, rect, isChecked });
+      }
+
+      detectedPGK[colInfo.q] = checkedRows;
+      const keyArr = appState.keys.pgk[colInfo.q] || [];
+
+      rowCells.forEach(cell => {
+        if (cell.isChecked) {
+          const inKey = keyArr.includes(cell.r);
+          overlayRects.push({ rect: cell.rect, color: inKey ? '#16a34a' : '#dc2626' });
+        } else {
+          overlayRects.push({ rect: cell.rect, color: 'rgba(148,163,184,0.35)' });
+        }
+      });
+    });
+
+    // 3. Scan Blok C (Benar/Salah - 5 tables x 5 rows x 2 blank columns B & S)
+    const detectedBS = {};
+    SHEET_MAP.bsTables.forEach(tbl => {
+      const rowH = (tbl.yBottom - tbl.yTop) / 5;
+      const wB = tbl.xB1 - tbl.xB0;
+      const wS = tbl.xS1 - tbl.xS0;
+      const rowsAns = [];
+
+      for (let r = 0; r < 5; r++) {
+        const ny = tbl.yTop + r * rowH;
+        const rectB = mapRectWithCal(tbl.xB0, ny, wB, rowH);
+        const rectS = mapRectWithCal(tbl.xS0, ny, wS, rowH);
+
+        const fillB = measureBoxFillRatio(mask, CANON_W, CANON_H, rectB, 0.18);
+        const fillS = measureBoxFillRatio(mask, CANON_W, CANON_H, rectS, 0.18);
+
+        let val = '';
+        if (fillB > 0.10 && fillB > fillS + 0.03) val = 'B';
+        else if (fillS > 0.10 && fillS > fillB + 0.03) val = 'S';
+
+        rowsAns.push(val);
+
+        const kVal = (appState.keys.bs[tbl.q] || [])[r] || '';
+        if (val === 'B') {
+          overlayRects.push({ rect: rectB, color: kVal === 'B' ? '#16a34a' : '#dc2626' });
+          overlayRects.push({ rect: rectS, color: 'rgba(148,163,184,0.3)' });
+        } else if (val === 'S') {
+          overlayRects.push({ rect: rectS, color: kVal === 'S' ? '#16a34a' : '#dc2626' });
+          overlayRects.push({ rect: rectB, color: 'rgba(148,163,184,0.3)' });
+        } else {
+          overlayRects.push({ rect: rectB, color: 'rgba(148,163,184,0.3)' });
+          overlayRects.push({ rect: rectS, color: 'rgba(148,163,184,0.3)' });
+        }
+      }
+      detectedBS[tbl.q] = rowsAns;
+    });
+
+    // Draw annotated result canvas
+    const outCanvas = document.getElementById('annotatedResultCanvas');
+    const outCtx = outCanvas.getContext('2d');
+    outCtx.drawImage(sourceWorkCanvas, 0, 0);
+    overlayRects.forEach(item => {
+      outCtx.strokeStyle = item.color;
+      outCtx.lineWidth = item.color.startsWith('rgba') ? 1.5 : 3.5;
+      outCtx.strokeRect(item.rect.x, item.rect.y, item.rect.w, item.rect.h);
+    });
+    document.getElementById('zoomedResultImg').src = outCanvas.toDataURL('image/jpeg', 0.85);
+
+    const prevNama = isRecalibration && currentScan ? document.getElementById('detectedNama').value : '';
+    const prevKelas = isRecalibration && currentScan ? document.getElementById('detectedKelas').value : (appState.kelas || '');
+    const prevNo = isRecalibration && currentScan ? document.getElementById('detectedNoPeserta').value : '';
+
+    currentScan = {
+      pg: detectedPG,
+      doubtfulPG,
+      pgk: detectedPGK,
+      bs: detectedBS
+    };
+
+    document.getElementById('scanResultBox').classList.remove('hidden');
+    populateRosterDropdown();
+    document.getElementById('detectedNama').value = prevNama;
+    document.getElementById('detectedKelas').value = prevKelas;
+    document.getElementById('detectedNoPeserta').value = prevNo;
+
+    refreshPreviewGridsAndScores();
+    if (!isRecalibration) showToast('Selesai dibaca secara instan!');
+  }
+
+  function populateRosterDropdown() {
+    const sel = document.getElementById('rosterSelect');
+    const names = (appState.rosterText || '')
+      .split('\n')
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    if (names.length === 0) {
+      sel.classList.add('hidden');
       return;
     }
 
-    document.getElementById('scanResultBox').classList.add('hidden');
-    document.getElementById('scanErrorBox').classList.add('hidden');
-    document.getElementById('scanLoadingBox').classList.remove('hidden');
-
-    try {
-      const { dataUrl, base64 } = await compressImageToBase64(file, 1600, 0.86);
-      const parsedData = await analyzeSheetWithGemini(base64);
-
-      currentScan = {
-        imageDataUrl: dataUrl,
-        nama: (parsedData.nama || '').trim(),
-        kelas: (parsedData.kelas || appState.kelas || '').trim(),
-        nomor_peserta: (parsedData.nomor_peserta || '').trim(),
-        pg: {},
-        pgk: {},
-        bs: {},
-        catatan_ai: parsedData.catatan_ai || ''
-      };
-
-      // Normalize PG (1..25)
-      for (let i = 1; i <= 25; i++) {
-        const val = (parsedData.pg && parsedData.pg[String(i)]) ? String(parsedData.pg[String(i)]).toUpperCase().trim() : '';
-        currentScan.pg[i] = ['A', 'B', 'C', 'D', 'E'].includes(val) ? val : '';
-      }
-
-      // Normalize PGK (1..5 -> array of 1..5)
-      for (let q = 1; q <= 5; q++) {
-        const rawArr = (parsedData.pgk && Array.isArray(parsedData.pgk[String(q)])) ? parsedData.pgk[String(q)] : [];
-        currentScan.pgk[q] = rawArr.map(n => parseInt(n, 10)).filter(n => n >= 1 && n <= 5).sort((a, b) => a - b);
-      }
-
-      // Normalize BS (1..5 -> array of 5 strings "B", "S", "")
-      for (let q = 1; q <= 5; q++) {
-        const rawRows = (parsedData.bs && Array.isArray(parsedData.bs[String(q)])) ? parsedData.bs[String(q)] : [];
-        const cleanRows = [];
-        for (let r = 0; r < 5; r++) {
-          const cellVal = rawRows[r] ? String(rawRows[r]).toUpperCase().trim() : '';
-          cleanRows.push(cellVal === 'B' || cellVal === 'S' ? cellVal : '');
-        }
-        currentScan.bs[q] = cleanRows;
-      }
-
-      document.getElementById('scanLoadingBox').classList.add('hidden');
-      renderScanPreview();
-    } catch (err) {
-      document.getElementById('scanLoadingBox').classList.add('hidden');
-      document.getElementById('scanErrorBox').classList.remove('hidden');
-      document.getElementById('scanErrorText').textContent = err.message || 'Terjadi kesalahan saat menghubungi Gemini API.';
-    }
+    const scannedSet = new Set(appState.students.map(s => s.nama.toLowerCase()));
+    sel.innerHTML = '<option value="">-- Pilih dari Daftar Nama Kelas --</option>';
+    names.forEach(name => {
+      const opt = document.createElement('option');
+      const already = scannedSet.has(name.toLowerCase());
+      opt.value = name;
+      opt.textContent = already ? `✓ ${name} (Sudah discan)` : name;
+      sel.appendChild(opt);
+    });
+    sel.classList.remove('hidden');
   }
 
-  async function analyzeSheetWithGemini(base64Jpeg) {
-    const promptText = `Kamu adalah sistem OMR & OCR presisi tinggi untuk membaca foto Lembar Jawab Ujian SMA Islam Darussalam.
-Perhatikan tata letak kertas secara saksama:
-1. IDENTITAS (Bagian Atas):
-   - "nama": tulisan tangan di sebelah label "Nama :".
-   - "nomor_peserta": tulisan tangan di sebelah label "Nomor Peserta :".
-   - "kelas": tulisan tangan di sebelah label "Kelas :".
-2. BLOK A. PILIHAN GANDA (Nomor 1 sampai ${appState.pgCount}):
-   - Terdiri dari kelompok grid 1-5, 6-10, 11-15, 16-20, dan 21-25 dengan kotak huruf A, B, C, D, E.
-   - Siswa menandai jawaban dengan tanda SILANG [X].
-   - ATURAN RALAT PENTING: Jika sebuah kotak memiliki dua garis coretan horizontal (=) atau dicoret penuh untuk membatalkan jawaban, ABAIKAN kotak tersebut dan ambil kotak lain yang memiliki tanda silang [X] bersih.
-   - Jika kosong atau ada lebih dari satu silang [X] yang sama-sama tidak dicoret, isi dengan "".
-   - Kembalikan objek "pg" dengan key "1" sampai "${appState.pgCount}" berisi "A", "B", "C", "D", "E", atau "".
-3. BLOK B. PILIHAN GANDA KOMPLEKS (Nomor 1 sampai 5):
-   - Terdapat 5 kolom vertikal (nomor 1, 2, 3, 4, 5). Setiap nomor memiliki 5 kotak vertikal dari atas (baris 1) ke bawah (baris 5).
-   - Siswa memberi tanda CENTANG [√] pada satu atau lebih kotak.
-   - Kembalikan objek "pgk" dengan key "1" sampai "5", masing-masing berupa array angka baris yang dicentang (contoh: [1, 3, 5] atau [] jika kosong).
-4. BLOK C. PILIHAN GANDA KATEGORI / BENAR SALAH (Nomor 1 sampai 5):
-   - Terdapat 5 tabel kecil (nomor 1, 2, 3, 4, 5). Setiap tabel memiliki 5 baris dari atas (indeks 0) ke bawah (indeks 4), dan 2 kolom: kolom kiri "B" (Benar) dan kolom kanan "S" (Salah).
-   - Siswa memberi tanda CENTANG [√] pada kolom B atau S di tiap baris.
-   - Kembalikan objek "bs" dengan key "1" sampai "5", masing-masing berupa array tepat 5 elemen berisi "B", "S", atau "" (jika baris kosong).
-5. BLOK D. URAIAN: Abaikan sepenuhnya.
-6. "catatan_ai": Tulis catatan singkat bahasa Indonesia jika ada tulisan tangan kurang jelas atau coretan meragukan, atau "" jika semua terbaca jelas.
-
-Kembalikan HANYA JSON valid dengan skema:
-{
-  "nama": "string",
-  "nomor_peserta": "string",
-  "kelas": "string",
-  "pg": {"1": "A", ...},
-  "pgk": {"1": [1, 2], ...},
-  "bs": {"1": ["B", "S", "", "", ""], ...},
-  "catatan_ai": "string"
-}`;
-
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${appState.model}:generateContent?key=${encodeURIComponent(appState.apiKey)}`;
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: promptText },
-            { inline_data: { mime_type: 'image/jpeg', data: base64Jpeg } }
-          ]
-        }],
-        generationConfig: {
-          temperature: 0.1,
-          responseMimeType: 'application/json'
-        }
-      })
-    });
-
-    if (!response.ok) {
-      const errJson = await response.json().catch(() => ({}));
-      const msg = errJson.error?.message || `HTTP Error ${response.status}`;
-      throw new Error(`API Error: ${msg}`);
+  function onRosterSelectChange() {
+    const val = document.getElementById('rosterSelect').value;
+    if (val) {
+      document.getElementById('detectedNama').value = val;
     }
-
-    const data = await response.json();
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const cleanedJson = rawText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
-    return JSON.parse(cleanedJson);
   }
 
   // ==================== SCORING & PREVIEW VERIFICATION ====================
@@ -874,9 +1316,9 @@ Kembalikan HANYA JSON valid dengan skema:
     let scorePG = 0;
     let scorePGK = 0;
     let scoreBS = 0;
-    const itemResults = []; // Tracks each active question for item analysis
+    const itemResults = [];
 
-    // 1. Evaluasi Blok A (PG)
+    // 1. Blok A (PG)
     for (let i = 1; i <= appState.pgCount; i++) {
       const k = appState.keys.pg[i] || '';
       const ans = scanObj.pg[i] || '';
@@ -893,7 +1335,7 @@ Kembalikan HANYA JSON valid dengan skema:
       });
     }
 
-    // 2. Evaluasi Blok B (PG Kompleks - Mutlak)
+    // 2. Blok B (PG Kompleks - Mutlak)
     for (let q = 1; q <= 5; q++) {
       const kArr = [...(appState.keys.pgk[q] || [])].sort((a, b) => a - b);
       const ansArr = [...(scanObj.pgk[q] || [])].sort((a, b) => a - b);
@@ -913,7 +1355,7 @@ Kembalikan HANYA JSON valid dengan skema:
       });
     }
 
-    // 3. Evaluasi Blok C (Benar/Salah - Mutlak per Nomor Soal)
+    // 3. Blok C (Benar/Salah - Mutlak per Nomor Soal)
     for (let q = 1; q <= 5; q++) {
       const kRows = appState.keys.bs[q] || ['', '', '', '', ''];
       const ansRows = scanObj.bs[q] || ['', '', '', '', ''];
@@ -957,34 +1399,15 @@ Kembalikan HANYA JSON valid dengan skema:
     };
   }
 
-  function renderScanPreview() {
-    if (!currentScan) return;
-    document.getElementById('scanResultBox').classList.remove('hidden');
-    document.getElementById('previewImageThumb').src = currentScan.imageDataUrl;
-    document.getElementById('zoomedImage').src = currentScan.imageDataUrl;
-    document.getElementById('detectedNama').value = currentScan.nama;
-    document.getElementById('detectedKelas').value = currentScan.kelas;
-    document.getElementById('detectedNoPeserta').value = currentScan.nomor_peserta;
-
-    const noteEl = document.getElementById('aiNoteBanner');
-    if (currentScan.catatan_ai) {
-      noteEl.textContent = `Catatan AI: ${currentScan.catatan_ai}`;
-      noteEl.classList.remove('hidden');
-    } else {
-      noteEl.classList.add('hidden');
-    }
-
-    refreshPreviewGridsAndScores();
-  }
-
   function refreshPreviewGridsAndScores() {
+    if (!currentScan) return;
     const evalRes = evaluateStudentAnswers(currentScan);
     document.getElementById('previewTotalScore').textContent = `Nilai: ${evalRes.totalScore}`;
     document.getElementById('previewScorePG').textContent = evalRes.scorePG;
     document.getElementById('previewScorePGK').textContent = evalRes.scorePGK;
     document.getElementById('previewScoreBS').textContent = evalRes.scoreBS;
 
-    // 1. Grid PG (Tap to cycle: A -> B -> C -> D -> E -> '')
+    // 1. Grid PG
     const pgContainer = document.getElementById('previewGridPG');
     pgContainer.innerHTML = '';
     const cycleOpts = ['A', 'B', 'C', 'D', 'E', ''];
@@ -993,22 +1416,26 @@ Kembalikan HANYA JSON valid dengan skema:
       const ans = currentScan.pg[i] || '';
       const key = appState.keys.pg[i] || '';
       const isOk = key !== '' && ans === key;
+      const isDoubt = currentScan.doubtfulPG && currentScan.doubtfulPG[i];
 
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = isOk
-        ? 'py-1.5 px-1 rounded border border-emerald-400 bg-emerald-50 text-emerald-900 text-xs font-bold'
-        : 'py-1.5 px-1 rounded border border-rose-300 bg-rose-50 text-rose-800 text-xs font-bold';
+      btn.className = isDoubt
+        ? 'py-1.5 px-1 rounded border-2 border-amber-400 bg-amber-50 text-amber-900 text-xs font-bold'
+        : isOk
+          ? 'py-1.5 px-1 rounded border border-emerald-400 bg-emerald-50 text-emerald-900 text-xs font-bold'
+          : 'py-1.5 px-1 rounded border border-rose-300 bg-rose-50 text-rose-800 text-xs font-bold';
       btn.innerHTML = `<span class="text-[10px] font-normal text-slate-500">${i}.</span> ${ans || '-'}`;
       btn.onclick = () => {
         const nextIdx = (cycleOpts.indexOf(ans) + 1) % cycleOpts.length;
         currentScan.pg[i] = cycleOpts[nextIdx];
+        if (currentScan.doubtfulPG) currentScan.doubtfulPG[i] = false;
         refreshPreviewGridsAndScores();
       };
       pgContainer.appendChild(btn);
     }
 
-    // 2. Grid PGK (Tap row 1..5 to toggle)
+    // 2. Grid PGK
     const pgkContainer = document.getElementById('previewGridPGK');
     pgkContainer.innerHTML = '';
 
@@ -1048,7 +1475,7 @@ Kembalikan HANYA JSON valid dengan skema:
       pgkContainer.appendChild(col);
     }
 
-    // 3. Grid BS (Tap row to cycle B -> S -> '')
+    // 3. Grid BS
     const bsContainer = document.getElementById('previewGridBS');
     bsContainer.innerHTML = '';
     const bsCycle = ['B', 'S', ''];
@@ -1091,7 +1518,7 @@ Kembalikan HANYA JSON valid dengan skema:
     }
   }
 
-  function toggleZoomImage() {
+  function toggleZoomCanvas() {
     document.getElementById('zoomModal').classList.toggle('hidden');
   }
 
@@ -1133,7 +1560,6 @@ Kembalikan HANYA JSON valid dengan skema:
     const totalStudents = appState.students.length;
     if (totalStudents === 0) return [];
 
-    // Re-evaluate all students against latest keys & weights
     const statsMap = {};
     appState.students.forEach(st => {
       const freshEval = evaluateStudentAnswers(st);
@@ -1185,7 +1611,6 @@ Kembalikan HANYA JSON valid dengan skema:
     const itemAnalysis = computeClassItemAnalysis();
     saveStateToStorage();
 
-    // Summary stats
     const scores = students.map(s => s.totalScore);
     const avg = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1);
     const max = Math.max(...scores);
@@ -1207,7 +1632,7 @@ Kembalikan HANYA JSON valid dengan skema:
       `).join('');
     }
 
-    // 2. Soal hanya sebagian yang betul (< 100%), sorted ascending by percentage
+    // 2. Soal hanya sebagian yang betul (< 100%)
     const partialItems = itemAnalysis
       .filter(it => it.correctCount < it.totalStudents)
       .sort((a, b) => a.percentage - b.percentage);
@@ -1288,7 +1713,7 @@ Kembalikan HANYA JSON valid dengan skema:
     }
 
     if (typeof XLSX === 'undefined') {
-      alert('Pustaka Excel gagal dimuat. Pastikan koneksi internet aktif saat membuka halaman ini.');
+      alert('Pustaka Excel belum termuat. Pastikan internet aktif sebentar saat membuka halaman.');
       return;
     }
 
@@ -1299,16 +1724,16 @@ Kembalikan HANYA JSON valid dengan skema:
 
     const wb = XLSX.utils.book_new();
 
-    // --- SHEET 1: REKAP NILAI ---
+    // SHEET 1: REKAP NILAI
     const questionHeaders = itemAnalysis.map(it => it.label);
     const sheet1Data = [
-      ['REKAPITULASI NILAI UJIAN (LJK DIGITAL)'],
+      ['REKAPITULASI NILAI UJIAN (LJK INSTAN)'],
       ['Mata Pelajaran', mapel],
       ['Kelas', kelas],
       ['Tanggal Unduh', tgl],
       ['Jumlah Siswa', appState.students.length],
       [],
-      ['No', 'Nama Siswa', 'Nomor Peserta', 'Kelas', 'Skor PG', 'Skor PGK', 'Skor B/S', 'Total Nilai', ...questionHeaders]
+      ['No', 'Nama Siswa', 'No. Absen/Peserta', 'Kelas', 'Skor PG', 'Skor PGK', 'Skor B/S', 'Total Nilai', ...questionHeaders]
     ];
 
     appState.students.forEach((st, idx) => {
@@ -1329,7 +1754,7 @@ Kembalikan HANYA JSON valid dengan skema:
     const ws1 = XLSX.utils.aoa_to_sheet(sheet1Data);
     XLSX.utils.book_append_sheet(wb, ws1, 'Rekap Nilai');
 
-    // --- SHEET 2: ANALISIS BUTIR SOAL ---
+    // SHEET 2: ANALISIS BUTIR SOAL
     const sheet2Data = [
       ['ANALISIS BUTIR SOAL PER KELAS'],
       ['Mata Pelajaran', mapel],
@@ -1359,7 +1784,7 @@ Kembalikan HANYA JSON valid dengan skema:
     const ws2 = XLSX.utils.aoa_to_sheet(sheet2Data);
     XLSX.utils.book_append_sheet(wb, ws2, 'Analisis Butir Soal');
 
-    // --- SHEET 3: DETAIL JAWABAN MENTAH ---
+    // SHEET 3: DETAIL JAWABAN MENTAH
     const sheet3Data = [
       ['DETAIL JAWABAN TERDETEKSI PER SISWA'],
       ['Mata Pelajaran', mapel, 'Kelas', kelas],
@@ -1383,7 +1808,6 @@ Kembalikan HANYA JSON valid dengan skema:
     showToast('File Excel berhasil diunduh!');
   }
 
-  // Boot app
   window.addEventListener('DOMContentLoaded', loadState);
 </script>
 </body>
