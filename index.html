@@ -580,7 +580,7 @@
         return true;
       });
 
-      // Prioritize stable full Flash models (2.5-flash, 2.0-flash) for speed + spatial accuracy
+      // Rank stable GA Flash models highest; push -preview/-exp models lower so they don't stall
       flashModels.sort((a, b) => {
         const score = (n) => {
           let s = 0;
@@ -589,8 +589,8 @@
           else if (n.includes('2.5-flash') && !n.includes('lite')) s += 80;
           else if (n.includes('3') && n.includes('flash') && !n.includes('lite')) s += 75;
           else if (n.includes('2.0-flash') && !n.includes('lite')) s += 70;
-          if (n.includes('lite')) s -= 20;
-          if (n.includes('exp') || n.includes('preview')) s -= 10;
+          if (n.includes('lite')) s -= 15;
+          if (n.includes('preview') || n.includes('exp')) s -= 30;
           return s;
         };
         return score(b) - score(a);
@@ -821,7 +821,6 @@
           canvas.height = h;
           const ctx = canvas.getContext('2d');
 
-          // Hardware-accelerated grayscale + contrast boost (65% smaller payload, crisp ink)
           ctx.filter = 'grayscale(100%) contrast(130%) brightness(104%)';
           ctx.drawImage(img, 0, 0, w, h);
 
@@ -929,8 +928,9 @@
   }
 
   function buildStrictResponseSchema() {
-    const pgEnum = ['A', 'B', 'C', 'D', 'E', ''];
-    const bsEnum = ['B', 'S', ''];
+    // Gemini OpenAPI schema forbids empty string "" in enum; use "-" to represent blank/unanswered
+    const pgEnum = ['A', 'B', 'C', 'D', 'E', '-'];
+    const bsEnum = ['B', 'S', '-'];
     const fiveRowPgArray = {
       type: 'ARRAY',
       items: { type: 'STRING', enum: pgEnum }
@@ -999,32 +999,40 @@
       genConfig.thinkingConfig = { thinkingBudget: 0 };
     }
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: promptText },
-            { inline_data: { mime_type: 'image/jpeg', data: base64Jpeg } }
-          ]
-        }],
-        generationConfig: genConfig
-      })
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 22000);
 
-    if (!response.ok) {
-      const errJson = await response.json().catch(() => ({}));
-      const msg = errJson.error?.message || `HTTP ${response.status}`;
-      const err = new Error(msg);
-      err.status = response.status;
-      throw err;
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: promptText },
+              { inline_data: { mime_type: 'image/jpeg', data: base64Jpeg } }
+            ]
+          }],
+          generationConfig: genConfig
+        })
+      });
+
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => ({}));
+        const msg = errJson.error?.message || `HTTP ${response.status}`;
+        const err = new Error(msg);
+        err.status = response.status;
+        throw err;
+      }
+
+      const data = await response.json();
+      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const cleanedJson = rawText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+      return JSON.parse(cleanedJson);
+    } finally {
+      clearTimeout(timeoutId);
     }
-
-    const data = await response.json();
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const cleanedJson = rawText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
-    return JSON.parse(cleanedJson);
   }
 
   async function analyzeSheetWithAutoFallback(base64Jpeg) {
@@ -1053,18 +1061,18 @@
    - Kolom Kiri Bawah -> "pg_6_10" (5 baris: nomor 6, 7, 8, 9, 10)
    - Kolom Tengah Atas -> "pg_11_15" (5 baris: nomor 11, 12, 13, 14, 15)
    - Kolom Tengah Bawah -> "pg_16_20" (5 baris: nomor 16, 17, 18, 19, 20)
-   - Kolom Kanan Atas -> "pg_21_25" (5 baris: nomor 21, 22, 23, 24, 25; isi ["","","","",""] jika tidak dipakai)
+   - Kolom Kanan Atas -> "pg_21_25" (5 baris: nomor 21, 22, 23, 24, 25; isi ["-","-","-","-","-"] jika tidak dipakai)
    * Abaikan kotak kanan bawah (nomor 26-30).
    * Tiap baris berisi huruf cetak [A][B][C][D][E]. Hanya kotak bertanda SILANG BOLPOIN [X] yang dihitung sebagai jawaban.
-   * RALAT: Jika kotak dicoret dua garis mendatar (=) untuk membatalkan pilihan, abaikan kotak itu dan ambil kotak lain yang memiliki silang [X] bersih. Jika kosong/ganda tanpa coretan, isi "".
+   * RALAT: Jika kotak dicoret dua garis mendatar (=) untuk membatalkan pilihan, abaikan kotak itu dan ambil kotak lain yang memiliki silang [X] bersih. Jika kosong atau ganda tanpa coretan, isi "-".
 
 3. B. PILIHAN GANDA KOMPLEKS (Kiri Bawah, 5 soal bernomor 1 s.d. 5):
    - Tiap soal memiliki 4 kotak centang vertikal dari atas (1) ke bawah (4).
-   - Untuk key "1".."5", kembalikan array nomor kotak (1..4) yang diberi tanda CENTANG [√] (contoh: [1, 2]).
+   - Untuk key "1".."5", kembalikan array nomor kotak (1..4) yang diberi tanda CENTANG [√] (contoh: [1, 2], atau [] jika kosong).
 
 4. C. PILIHAN GANDA KATEGORI / BENAR-SALAH (Kanan Bawah, 5 tabel kecil bernomor 1 s.d. 5):
    - Tiap tabel memiliki header kolom kiri "B" dan kolom kanan "S", diikuti 4 baris pernyataan dari atas ke bawah.
-   - Untuk key "1".."5", kembalikan array 4 elemen ("B", "S", atau "") sesuai posisi tanda CENTANG [√] tiap baris.
+   - Untuk key "1".."5", kembalikan array 4 elemen ("B", "S", atau "-") sesuai posisi tanda CENTANG [√] tiap baris.
 
 5. Abaikan bagian D. URAIAN di paling bawah.`;
 
@@ -1087,7 +1095,6 @@
           throw new Error('Gemini API Key tidak valid. Periksa kembali API Key di tab Setup & Kunci.');
         }
 
-        // If model rejects thinkingConfig parameter, retry immediately without thinkingConfig
         if (err.status === 400 && (msgLower.includes('thinking') || msgLower.includes('budget'))) {
           try {
             const parsedData = await callSingleGeminiModel(modelName, base64Jpeg, promptText, false);
@@ -1101,7 +1108,7 @@
           continue;
         }
 
-        await sleep(600);
+        await sleep(500);
       }
     }
 
