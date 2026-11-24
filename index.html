@@ -34,7 +34,7 @@
       <!-- API Key Card -->
       <div class="bg-white rounded-xl shadow-sm p-4 border border-slate-200 space-y-2.5">
         <div class="flex items-center justify-between">
-          <h2 class="font-bold text-sm text-slate-700">1. Koneksi AI Vision (Turbo & Presisi)</h2>
+          <h2 class="font-bold text-sm text-slate-700">1. Koneksi AI Vision (Gemini 3.8 Flash)</h2>
           <span id="apiStatusBadge" class="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-medium">Wajib diisi</span>
         </div>
         <div class="flex gap-2">
@@ -46,7 +46,7 @@
         </div>
         <div class="flex items-center justify-between gap-2 pt-1">
           <select id="geminiModelSelect" class="flex-1 text-xs border border-slate-300 rounded-lg px-2.5 py-2 text-slate-700 bg-white font-medium">
-            <option value="auto">Otomatis (Flash Turbo 2–4 Detik)</option>
+            <option value="auto">Otomatis (Gemini 3.8 Flash Turbo)</option>
           </select>
           <button type="button" onclick="discoverAvailableModels(true)"
             class="px-3 py-2 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded-lg font-semibold shrink-0">
@@ -54,7 +54,7 @@
           </button>
         </div>
         <p id="modelInfoText" class="text-[11px] text-slate-500">
-          Mode Turbo menonaktifkan jeda berpikir AI dan mengompres grayscale tajam agar pembacaan selesai dalam 2–4 detik.
+          Menggunakan Gemini 3.8 Flash dengan kompresi grayscale tajam agar pembacaan cepat dan presisi.
         </p>
       </div>
 
@@ -479,8 +479,16 @@
     }
     ensureKeyStructures();
 
+    // Filter out retired 2.0/1.5 models from cached storage
+    appState.discoveredFlashModels = (appState.discoveredFlashModels || []).filter(
+      m => !m.includes('2.0') && !m.includes('1.5')
+    );
+    if (appState.model && (appState.model.includes('2.0') || appState.model.includes('1.5'))) {
+      appState.model = 'auto';
+    }
+
     document.getElementById('apiKeyInput').value = appState.apiKey || '';
-    populateModelDropdown(appState.discoveredFlashModels || [], appState.model || 'auto');
+    populateModelDropdown(appState.discoveredFlashModels, appState.model || 'auto');
 
     document.getElementById('inputMapel').value = appState.mapel || '';
     document.getElementById('inputKelas').value = appState.kelas || '';
@@ -541,7 +549,7 @@
 
   function populateModelDropdown(modelsList, selectedVal) {
     const sel = document.getElementById('geminiModelSelect');
-    sel.innerHTML = '<option value="auto">Otomatis (Flash Turbo 2–4 Detik)</option>';
+    sel.innerHTML = '<option value="auto">Otomatis (Gemini 3.8 Flash Turbo)</option>';
     modelsList.forEach(m => {
       const opt = document.createElement('option');
       opt.value = m;
@@ -576,21 +584,22 @@
       const flashModels = allModels.filter(name => {
         const lower = name.toLowerCase();
         if (!lower.includes('flash')) return false;
+        if (lower.includes('2.0') || lower.includes('1.5')) return false;
         if (lower.includes('tts') || lower.includes('audio') || lower.includes('image') || lower.includes('live')) return false;
         return true;
       });
 
-      // Rank stable GA Flash models highest; push -preview/-exp models lower so they don't stall
       flashModels.sort((a, b) => {
         const score = (n) => {
           let s = 0;
-          if (n === 'gemini-2.5-flash') s += 100;
-          else if (n === 'gemini-2.0-flash') s += 90;
-          else if (n.includes('2.5-flash') && !n.includes('lite')) s += 80;
-          else if (n.includes('3') && n.includes('flash') && !n.includes('lite')) s += 75;
-          else if (n.includes('2.0-flash') && !n.includes('lite')) s += 70;
-          if (n.includes('lite')) s -= 15;
-          if (n.includes('preview') || n.includes('exp')) s -= 30;
+          if (n === 'gemini-3.8-flash') s += 120;
+          else if (n === 'gemini-3.8-flash-lite') s += 110;
+          else if (n.includes('3.8')) s += 100;
+          else if (n.includes('3.5')) s += 90;
+          else if (n.includes('3.')) s += 80;
+          else if (n.includes('2.5')) s += 70;
+          if (n.includes('lite')) s -= 5;
+          if (n.includes('preview') || n.includes('exp')) s -= 25;
           return s;
         };
         return score(b) - score(a);
@@ -602,9 +611,9 @@
 
       if (showFeedback) {
         document.getElementById('modelInfoText').textContent = flashModels.length
-          ? `Urutan prioritas aktif: ${flashModels.join(' → ')}`
-          : 'Tidak ditemukan model Flash khusus; mode otomatis tetap aktif.';
-        showToast(`${flashModels.length} model Flash aktif ditemukan!`);
+          ? `Urutan aktif: ${flashModels.join(' → ')}`
+          : 'Menggunakan jalur standar gemini-3.8-flash.';
+        showToast(`${flashModels.length} model aktif ditemukan!`);
       }
       return flashModels;
     } catch (e) {
@@ -928,7 +937,6 @@
   }
 
   function buildStrictResponseSchema() {
-    // Gemini OpenAPI schema forbids empty string "" in enum; use "-" to represent blank/unanswered
     const pgEnum = ['A', 'B', 'C', 'D', 'E', '-'];
     const bsEnum = ['B', 'S', '-'];
     const fiveRowPgArray = {
@@ -987,20 +995,22 @@
     };
   }
 
-  async function callSingleGeminiModel(modelName, base64Jpeg, promptText, disableThinking = true) {
+  async function invokeGeminiRequest(modelName, base64Jpeg, promptText, opts = { useThinkingZero: true, useSchema: true }) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(appState.apiKey)}`;
     const genConfig = {
       temperature: 0.0,
-      responseMimeType: 'application/json',
-      responseSchema: buildStrictResponseSchema()
+      responseMimeType: 'application/json'
     };
 
-    if (disableThinking) {
+    if (opts.useSchema) {
+      genConfig.responseSchema = buildStrictResponseSchema();
+    }
+    if (opts.useThinkingZero) {
       genConfig.thinkingConfig = { thinkingBudget: 0 };
     }
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 22000);
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
 
     try {
       const response = await fetch(url, {
@@ -1035,16 +1045,37 @@
     }
   }
 
-  async function analyzeSheetWithAutoFallback(base64Jpeg) {
-    if (!appState.discoveredFlashModels || appState.discoveredFlashModels.length === 0) {
-      await discoverAvailableModels(false);
+  async function callModelWithConfigGracefulDegradation(modelName, base64Jpeg, promptText) {
+    try {
+      return await invokeGeminiRequest(modelName, base64Jpeg, promptText, { useThinkingZero: true, useSchema: true });
+    } catch (err1) {
+      const msg1 = (err1.message || '').toLowerCase();
+      // If 400 Invalid Argument (e.g. unsupported thinkingConfig or schema), retry without thinkingConfig
+      if (err1.status === 400 && !msg1.includes('api key')) {
+        try {
+          return await invokeGeminiRequest(modelName, base64Jpeg, promptText, { useThinkingZero: false, useSchema: true });
+        } catch (err2) {
+          if (err2.status === 400) {
+            return await invokeGeminiRequest(modelName, base64Jpeg, promptText, { useThinkingZero: false, useSchema: false });
+          }
+          throw err2;
+        }
+      }
+      throw err1;
     }
+  }
+
+  async function analyzeSheetWithAutoFallback(base64Jpeg) {
+    const cachedValid = (appState.discoveredFlashModels || []).filter(
+      m => !m.includes('2.0') && !m.includes('1.5')
+    );
 
     const fallbackPool = [
       ...(appState.model && appState.model !== 'auto' ? [appState.model] : []),
-      ...(appState.discoveredFlashModels || []),
-      'gemini-2.5-flash',
-      'gemini-2.0-flash'
+      'gemini-3.8-flash',
+      'gemini-3.8-flash-lite',
+      ...cachedValid,
+      'gemini-2.5-flash'
     ];
     const candidateModels = [...new Set(fallbackPool)];
 
@@ -1074,34 +1105,24 @@
    - Tiap tabel memiliki header kolom kiri "B" dan kolom kanan "S", diikuti 4 baris pernyataan dari atas ke bawah.
    - Untuk key "1".."5", kembalikan array 4 elemen ("B", "S", atau "-") sesuai posisi tanda CENTANG [√] tiap baris.
 
-5. Abaikan bagian D. URAIAN di paling bawah.`;
+5. Abaikan bagian D. URAIAN di paling bawah.
+Kembalikan HANYA JSON valid dengan key: nama, nomor_peserta, kelas, pg_1_5, pg_6_10, pg_11_15, pg_16_20, pg_21_25, pgk, bs, catatan_ai.`;
 
-    let lastError = null;
+    let primaryError = null;
 
     for (let i = 0; i < candidateModels.length; i++) {
       const modelName = candidateModels[i];
 
       try {
-        if (i > 0) {
-          document.getElementById('scanLoadingTitle').textContent = `Mengalihkan ke ${modelName}...`;
-        }
-        const parsedData = await callSingleGeminiModel(modelName, base64Jpeg, promptText, true);
+        document.getElementById('scanLoadingTitle').textContent = `Membaca lewat ${modelName}...`;
+        const parsedData = await callModelWithConfigGracefulDegradation(modelName, base64Jpeg, promptText);
         return { parsedData, usedModel: modelName };
       } catch (err) {
-        lastError = err;
+        if (!primaryError) primaryError = { model: modelName, msg: err.message };
         const msgLower = (err.message || '').toLowerCase();
 
         if (err.status === 400 && msgLower.includes('api key')) {
           throw new Error('Gemini API Key tidak valid. Periksa kembali API Key di tab Setup & Kunci.');
-        }
-
-        if (err.status === 400 && (msgLower.includes('thinking') || msgLower.includes('budget'))) {
-          try {
-            const parsedData = await callSingleGeminiModel(modelName, base64Jpeg, promptText, false);
-            return { parsedData, usedModel: modelName };
-          } catch (retryErr) {
-            lastError = retryErr;
-          }
         }
 
         if (err.status === 404 || msgLower.includes('no longer available') || msgLower.includes('limit: 0')) {
@@ -1112,7 +1133,7 @@
       }
     }
 
-    throw new Error(`Server AI sedang sibuk (${lastError?.message || 'Timeout'}). Tekan foto ulang beberapa detik lagi.`);
+    throw new Error(`Gagal pada ${primaryError?.model || 'AI'}: ${primaryError?.msg || 'Server sibuk'}.`);
   }
 
   // ==================== SCORING & PREVIEW VERIFICATION ====================
