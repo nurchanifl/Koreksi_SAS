@@ -54,7 +54,7 @@
           </button>
         </div>
         <p id="modelInfoText" class="text-[11px] text-slate-500">
-          Jika memilih model spesifik, aplikasi hanya memakai model tersebut. Pilih "Otomatis" jika ingin berpindah otomatis saat kuota penuh.
+          Jika memilih model spesifik (mis. gemini-4-hydrogen atau gemini-3.1-flash-lite), aplikasi hanya memakai model tersebut.
         </p>
       </div>
 
@@ -427,6 +427,15 @@
   const STORAGE_KEY = 'ljk_sas_darussalam_smart_v3';
   const CHOICE_COUNT_4 = 4;
 
+  const ACTIVE_MODELS_PRIORITY = [
+    'gemini-3.8-flash',
+    'gemini-3.6-flash',
+    'gemini-3.5-flash-lite',
+    'gemini-3.1-flash-lite',
+    'gemini-3-flash',
+    'gemini-4-hydrogen'
+  ];
+
   let appState = {
     apiKey: '',
     model: 'auto',
@@ -480,7 +489,7 @@
     ensureKeyStructures();
 
     appState.discoveredFlashModels = (appState.discoveredFlashModels || []).filter(
-      m => !m.includes('2.0') && !m.includes('1.5')
+      m => !m.includes('2.0') && !m.includes('1.5') && !m.includes('1.0')
     );
     if (appState.model && (appState.model.includes('2.0') || appState.model.includes('1.5'))) {
       appState.model = 'auto';
@@ -549,8 +558,7 @@
   function populateModelDropdown(modelsList, selectedVal) {
     const sel = document.getElementById('geminiModelSelect');
     sel.innerHTML = '<option value="auto">Otomatis (Rotasi Model Aktif)</option>';
-    const baseModels = ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-3-flash'];
-    const combined = [...new Set([...modelsList, ...baseModels])];
+    const combined = [...new Set([...ACTIVE_MODELS_PRIORITY, ...modelsList])];
 
     combined.forEach(m => {
       const opt = document.createElement('option');
@@ -583,42 +591,24 @@
         .filter(m => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes('generateContent'))
         .map(m => m.name.replace(/^models\//, ''));
 
-      const flashModels = allModels.filter(name => {
+      // Sertakan semua model Gemini generasi 3 & 4 (termasuk Hydrogen, Neon, Flash, dll)
+      const validModels = allModels.filter(name => {
         const lower = name.toLowerCase();
-        if (!lower.includes('flash')) return false;
-        if (lower.includes('2.0') || lower.includes('1.5')) return false;
-        if (lower.includes('tts') || lower.includes('audio') || lower.includes('image') || lower.includes('live')) return false;
+        if (!lower.includes('gemini')) return false;
+        if (lower.includes('2.0') || lower.includes('1.5') || lower.includes('1.0')) return false;
+        if (lower.includes('tts') || lower.includes('audio') || lower.includes('image') || lower.includes('live') || lower.includes('embedding')) return false;
         return true;
       });
 
-      flashModels.sort((a, b) => {
-        const score = (n) => {
-          let s = 0;
-          if (n === 'gemini-3.8-flash') s += 120;
-          else if (n === 'gemini-3.6-flash') s += 115;
-          else if (n === 'gemini-3.5-flash-lite') s += 110;
-          else if (n === 'gemini-3.1-flash-lite') s += 105;
-          else if (n.includes('3.8')) s += 100;
-          else if (n.includes('3.6')) s += 95;
-          else if (n.includes('3.5')) s += 90;
-          else if (n.includes('3.')) s += 80;
-          if (n.includes('preview') || n.includes('exp')) s -= 25;
-          return s;
-        };
-        return score(b) - score(a);
-      });
-
-      appState.discoveredFlashModels = flashModels;
+      appState.discoveredFlashModels = validModels;
       saveStateToStorage();
-      populateModelDropdown(flashModels, document.getElementById('geminiModelSelect').value);
+      populateModelDropdown(validModels, document.getElementById('geminiModelSelect').value);
 
       if (showFeedback) {
-        document.getElementById('modelInfoText').textContent = flashModels.length
-          ? `Model terdeteksi: ${flashModels.join(', ')}`
-          : 'Daftar model standar siap dipilih.';
-        showToast(`${flashModels.length} model aktif ditemukan!`);
+        document.getElementById('modelInfoText').textContent = `${validModels.length} model aktif (termasuk gemini-4-hydrogen) dimuat ke daftar.`;
+        showToast(`${validModels.length} model ditemukan!`);
       }
-      return flashModels;
+      return validModels;
     } catch (e) {
       if (showFeedback) showToast('Gagal terhubung untuk cek model');
       return [];
@@ -1047,7 +1037,6 @@
   }
 
   async function callSingleModelWithRetry(modelName, base64Jpeg, promptText) {
-    // Retry up to 2 times on transient 503 high-demand spikes for the same model
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         return await invokeGeminiRequest(modelName, base64Jpeg, promptText, { useThinkingZero: true, useSchema: true });
@@ -1079,10 +1068,10 @@
   async function analyzeSheetStrictOrAuto(base64Jpeg) {
     const isManualSelection = appState.model && appState.model !== 'auto';
 
-    // If user selected a specific model, ONLY call that exact model (never sweep all other models)
+    // Jika model dipilih manual, kunci HANYA pada model tersebut
     const candidateModels = isManualSelection
       ? [appState.model]
-      : ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-3-flash'];
+      : ACTIVE_MODELS_PRIORITY;
 
     const promptText = `Baca Lembar Jawab Ujian SMA Islam Darussalam ini dengan akurasi 100%.
 
