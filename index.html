@@ -54,7 +54,7 @@
           </button>
         </div>
         <p id="modelInfoText" class="text-[11px] text-slate-500">
-          Mode Otomatis akan memprioritaskan model Flash gratis dan otomatis berpindah ke model cadangan jika server sedang padat.
+          Mode Otomatis memprioritaskan model Flash gratis dan otomatis berpindah ke model cadangan jika server sedang padat.
         </p>
       </div>
 
@@ -114,7 +114,7 @@
             </div>
           </div>
           <p class="text-[11px] text-slate-500 leading-snug">
-            *Aturan Blok B (PGK) & Blok C (B/S): Penilaian mutlak per nomor soal. Jika ada 1 pilihan/baris tidak sesuai kunci, nilai nomor tersebut = 0.
+            *Aturan Blok B (PGK) & Blok C (B/S): 4 pilihan/baris per nomor. Penilaian mutlak: jika 1 pilihan saja tidak sesuai kunci, nilai nomor tersebut = 0.
           </p>
         </div>
       </div>
@@ -128,17 +128,17 @@
         <div id="keyContainerPG" class="space-y-2"></div>
       </div>
 
-      <!-- Kunci Jawaban Blok B: Pilihan Ganda Kompleks -->
+      <!-- Kunci Jawaban Blok B: Pilihan Ganda Kompleks (4 Pilihan) -->
       <div class="bg-white rounded-xl shadow-sm p-4 border border-slate-200">
-        <h2 class="font-bold text-sm text-slate-700 mb-1">4. Kunci Jawaban B. PG Kompleks (MCMA)</h2>
-        <p class="text-xs text-slate-500 mb-3">Centang baris ke-1 s.d. ke-5 (atas ke bawah) yang benar pada tiap nomor soal.</p>
+        <h2 class="font-bold text-sm text-slate-700 mb-1">4. Kunci Jawaban B. PG Kompleks (4 Pilihan)</h2>
+        <p class="text-xs text-slate-500 mb-3">Centang pilihan ke-1 s.d. ke-4 (atas ke bawah) yang benar pada tiap nomor soal.</p>
         <div id="keyContainerPGK" class="grid grid-cols-5 gap-2"></div>
       </div>
 
-      <!-- Kunci Jawaban Blok C: Pilihan Ganda Kategori (B/S) -->
+      <!-- Kunci Jawaban Blok C: Pilihan Ganda Kategori / Benar-Salah (4 Pilihan) -->
       <div class="bg-white rounded-xl shadow-sm p-4 border border-slate-200">
-        <h2 class="font-bold text-sm text-slate-700 mb-1">5. Kunci Jawaban C. Benar / Salah (B/S)</h2>
-        <p class="text-xs text-slate-500 mb-3">Pilih B atau S tiap baris (atas ke bawah). Biarkan kosong jika baris tidak dipakai.</p>
+        <h2 class="font-bold text-sm text-slate-700 mb-1">5. Kunci Jawaban C. Benar / Salah (4 Pilihan)</h2>
+        <p class="text-xs text-slate-500 mb-3">Pilih B atau S tiap baris (1–4 dari atas ke bawah). Biarkan kosong jika baris tidak dipakai.</p>
         <div id="keyContainerBS" class="space-y-3"></div>
       </div>
 
@@ -251,12 +251,12 @@
           </div>
 
           <div>
-            <h4 class="text-xs font-bold text-slate-700 mb-1.5">B. PG Kompleks (Tap kotak baris 1–5 untuk koreksi)</h4>
+            <h4 class="text-xs font-bold text-slate-700 mb-1.5">B. PG Kompleks (Tap pilihan 1–4 untuk koreksi)</h4>
             <div id="previewGridPGK" class="grid grid-cols-5 gap-1.5"></div>
           </div>
 
           <div>
-            <h4 class="text-xs font-bold text-slate-700 mb-1.5">C. Benar / Salah (Tap B/S per baris untuk koreksi)</h4>
+            <h4 class="text-xs font-bold text-slate-700 mb-1.5">C. Benar / Salah (Tap B/S pilihan 1–4 untuk koreksi)</h4>
             <div id="previewGridBS" class="space-y-2"></div>
           </div>
         </div>
@@ -425,6 +425,7 @@
 <script>
   // ==================== STATE MANAGEMENT ====================
   const STORAGE_KEY = 'ljk_sas_darussalam_smart_v3';
+  const CHOICE_COUNT_4 = 4; // 4 pilihan/baris untuk Blok B (PGK) dan Blok C (B/S)
 
   let appState = {
     apiKey: '',
@@ -451,9 +452,18 @@
       if (!appState.keys.pg[i]) appState.keys.pg[i] = '';
     }
     for (let q = 1; q <= 5; q++) {
-      if (!Array.isArray(appState.keys.pgk[q])) appState.keys.pgk[q] = [];
-      if (!Array.isArray(appState.keys.bs[q]) || appState.keys.bs[q].length !== 5) {
-        appState.keys.bs[q] = ['', '', '', '', ''];
+      if (!Array.isArray(appState.keys.pgk[q])) {
+        appState.keys.pgk[q] = [];
+      } else {
+        appState.keys.pgk[q] = appState.keys.pgk[q].filter(n => n >= 1 && n <= CHOICE_COUNT_4);
+      }
+
+      if (!Array.isArray(appState.keys.bs[q])) {
+        appState.keys.bs[q] = ['', '', '', ''];
+      } else {
+        const trimmed = appState.keys.bs[q].slice(0, CHOICE_COUNT_4);
+        while (trimmed.length < CHOICE_COUNT_4) trimmed.push('');
+        appState.keys.bs[q] = trimmed;
       }
     }
   }
@@ -563,7 +573,6 @@
         .filter(m => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes('generateContent'))
         .map(m => m.name.replace(/^models\//, ''));
 
-      // Filter only Flash / Lite vision-capable models (Pro models have 0 quota on Free Tier)
       const flashModels = allModels.filter(name => {
         const lower = name.toLowerCase();
         if (!lower.includes('flash')) return false;
@@ -571,7 +580,6 @@
         return true;
       });
 
-      // Rank: prioritize flash-lite (least congested, high free quota) & latest flash
       flashModels.sort((a, b) => {
         const score = (n) => {
           let s = 0;
@@ -579,7 +587,7 @@
           else if (n.includes('3.5')) s += 25;
           else if (n.includes('3.')) s += 20;
           else if (n.includes('2.5')) s += 10;
-          if (n.includes('lite')) s += 8; // lite models rarely hit high-demand spikes
+          if (n.includes('lite')) s += 8;
           if (n.includes('latest')) s += 2;
           return s;
         };
@@ -687,7 +695,7 @@
       title.textContent = `No. ${q}`;
       col.appendChild(title);
 
-      for (let r = 1; r <= 5; r++) {
+      for (let r = 1; r <= CHOICE_COUNT_4; r++) {
         const isChecked = appState.keys.pgk[q].includes(r);
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -724,16 +732,16 @@
       card.appendChild(header);
 
       const grid = document.createElement('div');
-      grid.className = 'grid grid-cols-5 gap-1.5';
+      grid.className = 'grid grid-cols-4 gap-2';
 
-      for (let r = 0; r < 5; r++) {
+      for (let r = 0; r < CHOICE_COUNT_4; r++) {
         const val = appState.keys.bs[q][r];
         const cell = document.createElement('div');
-        cell.className = 'bg-white border border-slate-200 rounded p-1 text-center space-y-1';
+        cell.className = 'bg-white border border-slate-200 rounded p-1.5 text-center space-y-1';
 
         const lbl = document.createElement('div');
         lbl.className = 'text-[10px] text-slate-400 font-semibold';
-        lbl.textContent = `Brs ${r + 1}`;
+        lbl.textContent = `Pilihan ${r + 1}`;
         cell.appendChild(lbl);
 
         const btnRow = document.createElement('div');
@@ -743,8 +751,8 @@
           b.type = 'button';
           const active = val === opt;
           b.className = active
-            ? (opt === 'B' ? 'flex-1 py-1 rounded text-[11px] font-bold bg-emerald-600 text-white' : 'flex-1 py-1 rounded text-[11px] font-bold bg-rose-600 text-white')
-            : 'flex-1 py-1 rounded text-[11px] font-semibold bg-slate-100 text-slate-500';
+            ? (opt === 'B' ? 'flex-1 py-1.5 rounded text-xs font-bold bg-emerald-600 text-white' : 'flex-1 py-1.5 rounded text-xs font-bold bg-rose-600 text-white')
+            : 'flex-1 py-1.5 rounded text-xs font-semibold bg-slate-100 text-slate-500';
           b.textContent = opt;
           b.onclick = () => {
             appState.keys.bs[q][r] = active ? '' : opt;
@@ -869,13 +877,16 @@
 
       for (let q = 1; q <= 5; q++) {
         const rawArr = (parsedData.pgk && Array.isArray(parsedData.pgk[String(q)])) ? parsedData.pgk[String(q)] : [];
-        currentScan.pgk[q] = rawArr.map(n => parseInt(n, 10)).filter(n => n >= 1 && n <= 5).sort((a, b) => a - b);
+        currentScan.pgk[q] = rawArr
+          .map(n => parseInt(n, 10))
+          .filter(n => n >= 1 && n <= CHOICE_COUNT_4)
+          .sort((a, b) => a - b);
       }
 
       for (let q = 1; q <= 5; q++) {
         const rawRows = (parsedData.bs && Array.isArray(parsedData.bs[String(q)])) ? parsedData.bs[String(q)] : [];
         const cleanRows = [];
-        for (let r = 0; r < 5; r++) {
+        for (let r = 0; r < CHOICE_COUNT_4; r++) {
           const cellVal = rawRows[r] ? String(rawRows[r]).toUpperCase().trim() : '';
           cleanRows.push(cellVal === 'B' || cellVal === 'S' ? cellVal : '');
         }
@@ -925,7 +936,6 @@
   }
 
   async function analyzeSheetWithAutoFallback(base64Jpeg) {
-    // Ensure we have the live list of active Flash/Lite models for this API key
     if (!appState.discoveredFlashModels || appState.discoveredFlashModels.length === 0) {
       await discoverAvailableModels(false);
     }
@@ -938,7 +948,6 @@
       'gemini-3.5-flash-lite',
       'gemini-3.5-flash'
     ];
-    // Deduplicate while preserving order
     const candidateModels = [...new Set(fallbackPool)];
 
     const promptText = `Kamu adalah sistem OMR & OCR presisi tinggi untuk membaca foto Lembar Jawab Ujian SMA Islam Darussalam.
@@ -953,14 +962,14 @@ Perhatikan tata letak kertas secara saksama (meskipun foto sedikit miring):
    - ATURAN RALAT PENTING: Jika sebuah kotak memiliki dua garis coretan horizontal (=) atau dicoret penuh untuk membatalkan jawaban, ABAIKAN kotak tersebut dan ambil kotak lain yang memiliki tanda silang [X] bersih.
    - Jika kosong atau ada lebih dari satu silang [X] yang sama-sama tidak dicoret, isi dengan "".
    - Kembalikan objek "pg" dengan key "1" sampai "${appState.pgCount}" berisi "A", "B", "C", "D", "E", atau "".
-3. BLOK B. PILIHAN GANDA KOMPLEKS (Nomor 1 sampai 5):
-   - Terdapat 5 kolom vertikal (nomor 1, 2, 3, 4, 5). Setiap nomor memiliki 5 kotak vertikal dari atas (baris 1) ke bawah (baris 5).
+3. BLOK B. PILIHAN GANDA KOMPLEKS (Nomor 1 sampai 5, HANYA 4 PILIHAN TERATAS):
+   - Terdapat 5 kolom vertikal (nomor 1, 2, 3, 4, 5). Setiap nomor HANYA memakai 4 kotak pilihan dari atas (baris 1) ke bawah (baris 4). Jika pada cetakan kertas terdapat kotak ke-5 di paling bawah yang kosong, abaikan kotak ke-5 tersebut.
    - Siswa memberi tanda CENTANG [√] pada satu atau lebih kotak.
-   - Kembalikan objek "pgk" dengan key "1" sampai "5", masing-masing berupa array angka baris yang dicentang (contoh: [1, 3, 5] atau [] jika kosong).
-4. BLOK C. PILIHAN GANDA KATEGORI / BENAR SALAH (Nomor 1 sampai 5):
-   - Terdapat 5 tabel kecil (nomor 1, 2, 3, 4, 5). Setiap tabel memiliki 5 baris dari atas (indeks 0) ke bawah (indeks 4), dan 2 kolom: kolom kiri "B" (Benar) dan kolom kanan "S" (Salah).
+   - Kembalikan objek "pgk" dengan key "1" sampai "5", masing-masing berupa array angka baris 1..4 yang dicentang (contoh: [1, 3] atau [] jika kosong).
+4. BLOK C. PILIHAN GANDA KATEGORI / BENAR SALAH (Nomor 1 sampai 5, HANYA 4 BARIS TERATAS):
+   - Terdapat 5 tabel kecil (nomor 1, 2, 3, 4, 5). Setiap tabel memiliki header kolom kiri "B" (Benar) dan kolom kanan "S" (Salah), dan HANYA memakai 4 baris pernyataan dari atas (indeks 0) ke bawah (indeks 3). Jika pada cetakan kertas terdapat baris ke-5 paling bawah yang kosong, abaikan baris ke-5 tersebut.
    - Siswa memberi tanda CENTANG [√] pada kolom B atau S di tiap baris.
-   - Kembalikan objek "bs" dengan key "1" sampai "5", masing-masing berupa array tepat 5 elemen berisi "B", "S", atau "" (jika baris kosong).
+   - Kembalikan objek "bs" dengan key "1" sampai "5", masing-masing berupa array tepat 4 elemen berisi "B", "S", atau "" (contoh: ["B", "S", "B", "S"]).
 5. BLOK D. URAIAN: Abaikan sepenuhnya.
 6. "catatan_ai": Tulis catatan singkat bahasa Indonesia jika ada tulisan tangan kurang jelas atau coretan meragukan, atau "" jika semua terbaca jelas.
 
@@ -971,7 +980,7 @@ Kembalikan HANYA JSON valid dengan skema:
   "kelas": "string",
   "pg": {"1": "A", ...},
   "pgk": {"1": [1, 2], ...},
-  "bs": {"1": ["B", "S", "", "", ""], ...},
+  "bs": {"1": ["B", "S", "B", "S"], ...},
   "catatan_ai": "string"
 }`;
 
@@ -980,7 +989,6 @@ Kembalikan HANYA JSON valid dengan skema:
     for (let i = 0; i < candidateModels.length; i++) {
       const modelName = candidateModels[i];
 
-      // Up to 2 attempts per model on transient 503 high-demand spikes
       for (let attempt = 1; attempt <= 2; attempt++) {
         try {
           if (i > 0 || attempt > 1) {
@@ -993,17 +1001,14 @@ Kembalikan HANYA JSON valid dengan skema:
           lastError = err;
           const msgLower = (err.message || '').toLowerCase();
 
-          // Stop immediately if API key itself is invalid
           if (err.status === 400 && msgLower.includes('api key')) {
             throw new Error('Gemini API Key tidak valid. Periksa kembali API Key di tab Setup & Kunci.');
           }
 
-          // Skip immediately to next model if model doesn't exist or free quota is 0
           if (err.status === 404 || msgLower.includes('no longer available') || msgLower.includes('limit: 0')) {
             break;
           }
 
-          // Transient high-demand / rate limit: wait briefly then retry or switch model
           if (attempt === 1) {
             await sleep(1200);
           }
@@ -1021,6 +1026,7 @@ Kembalikan HANYA JSON valid dengan skema:
     let scoreBS = 0;
     const itemResults = [];
 
+    // 1. Blok A (PG)
     for (let i = 1; i <= appState.pgCount; i++) {
       const k = appState.keys.pg[i] || '';
       const ans = scanObj.pg[i] || '';
@@ -1037,9 +1043,15 @@ Kembalikan HANYA JSON valid dengan skema:
       });
     }
 
+    // 2. Blok B (PG Kompleks - 4 Pilihan, Mutlak)
     for (let q = 1; q <= 5; q++) {
-      const kArr = [...(appState.keys.pgk[q] || [])].sort((a, b) => a - b);
-      const ansArr = [...(scanObj.pgk[q] || [])].sort((a, b) => a - b);
+      const kArr = [...(appState.keys.pgk[q] || [])]
+        .filter(n => n >= 1 && n <= CHOICE_COUNT_4)
+        .sort((a, b) => a - b);
+      const ansArr = [...(scanObj.pgk[q] || [])]
+        .filter(n => n >= 1 && n <= CHOICE_COUNT_4)
+        .sort((a, b) => a - b);
+
       const isCorrect = kArr.length > 0 &&
         kArr.length === ansArr.length &&
         kArr.every((val, idx) => val === ansArr[idx]);
@@ -1050,22 +1062,23 @@ Kembalikan HANYA JSON valid dengan skema:
         code: `PGK-${q}`,
         label: `PGK No. ${q}`,
         type: 'PG Kompleks',
-        keyDisplay: kArr.length ? `Brs ${kArr.join(',')}` : '-',
-        studentDisplay: ansArr.length ? `Brs ${ansArr.join(',')}` : 'Kosong',
+        keyDisplay: kArr.length ? `Pil ${kArr.join(',')}` : '-',
+        studentDisplay: ansArr.length ? `Pil ${ansArr.join(',')}` : 'Kosong',
         correct: isCorrect ? 1 : 0
       });
     }
 
+    // 3. Blok C (Benar/Salah - 4 Pilihan, Mutlak per Nomor Soal)
     for (let q = 1; q <= 5; q++) {
-      const kRows = appState.keys.bs[q] || ['', '', '', '', ''];
-      const ansRows = scanObj.bs[q] || ['', '', '', '', ''];
+      const kRows = (appState.keys.bs[q] || ['', '', '', '']).slice(0, CHOICE_COUNT_4);
+      const ansRows = (scanObj.bs[q] || ['', '', '', '']).slice(0, CHOICE_COUNT_4);
 
       let hasActiveKey = false;
       let allRowsMatch = true;
       const keySummary = [];
       const ansSummary = [];
 
-      for (let r = 0; r < 5; r++) {
+      for (let r = 0; r < CHOICE_COUNT_4; r++) {
         if (kRows[r] === 'B' || kRows[r] === 'S') {
           hasActiveKey = true;
           keySummary.push(kRows[r]);
@@ -1151,13 +1164,13 @@ Kembalikan HANYA JSON valid dengan skema:
       pgContainer.appendChild(btn);
     }
 
-    // 2. Grid PGK
+    // 2. Grid PGK (4 Pilihan)
     const pgkContainer = document.getElementById('previewGridPGK');
     pgkContainer.innerHTML = '';
 
     for (let q = 1; q <= 5; q++) {
-      const kArr = appState.keys.pgk[q] || [];
-      const ansArr = currentScan.pgk[q] || [];
+      const kArr = (appState.keys.pgk[q] || []).filter(n => n <= CHOICE_COUNT_4);
+      const ansArr = (currentScan.pgk[q] || []).filter(n => n <= CHOICE_COUNT_4);
       const isOk = kArr.length > 0 && kArr.length === ansArr.length && kArr.every((v, idx) => v === ansArr[idx]);
 
       const col = document.createElement('div');
@@ -1170,7 +1183,7 @@ Kembalikan HANYA JSON valid dengan skema:
       lbl.textContent = `No.${q}`;
       col.appendChild(lbl);
 
-      for (let r = 1; r <= 5; r++) {
+      for (let r = 1; r <= CHOICE_COUNT_4; r++) {
         const active = ansArr.includes(r);
         const b = document.createElement('button');
         b.type = 'button';
@@ -1191,7 +1204,7 @@ Kembalikan HANYA JSON valid dengan skema:
       pgkContainer.appendChild(col);
     }
 
-    // 3. Grid BS
+    // 3. Grid BS (4 Pilihan)
     const bsContainer = document.getElementById('previewGridBS');
     bsContainer.innerHTML = '';
     const bsCycle = ['B', 'S', ''];
@@ -1206,22 +1219,22 @@ Kembalikan HANYA JSON valid dengan skema:
         : 'p-2 rounded border border-rose-300 bg-rose-50 flex items-center justify-between';
 
       const title = document.createElement('span');
-      title.className = 'text-xs font-bold text-slate-700 w-12';
+      title.className = 'text-xs font-bold text-slate-700 w-14';
       title.textContent = `No. ${q}`;
       rowCard.appendChild(title);
 
       const btns = document.createElement('div');
-      btns.className = 'flex gap-1.5 flex-1 justify-end';
-      for (let r = 0; r < 5; r++) {
+      btns.className = 'flex gap-2 flex-1 justify-end';
+      for (let r = 0; r < CHOICE_COUNT_4; r++) {
         const val = currentScan.bs[q][r] || '';
         const b = document.createElement('button');
         b.type = 'button';
         b.className = val === 'B'
-          ? 'w-9 h-7 rounded bg-emerald-600 text-white text-xs font-bold'
+          ? 'w-12 h-7 rounded bg-emerald-600 text-white text-xs font-bold'
           : val === 'S'
-            ? 'w-9 h-7 rounded bg-rose-600 text-white text-xs font-bold'
-            : 'w-9 h-7 rounded bg-white border border-slate-300 text-slate-400 text-xs';
-        b.textContent = val || '-';
+            ? 'w-12 h-7 rounded bg-rose-600 text-white text-xs font-bold'
+            : 'w-12 h-7 rounded bg-white border border-slate-300 text-slate-400 text-xs';
+        b.innerHTML = `<span class="text-[9px] opacity-75">${r + 1}:</span>${val || '-'}`;
         b.onclick = () => {
           const next = bsCycle[(bsCycle.indexOf(val) + 1) % bsCycle.length];
           currentScan.bs[q][r] = next;
