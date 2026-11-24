@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Koreksi LJK Digital - SAS</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <style>
+    body { -webkit-tap-highlight-color: transparent; font-family: system-ui, -apple-system, sans-serif; }
+    .tab-active { color: #1d4ed8; border-top: 3px solid #1d4ed8; background-color: #eff6ff; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 pb-24">
+
+  <!-- Header -->
+  <header class="bg-blue-800 text-white sticky top-0 z-30 shadow-md px-4 py-3 flex items-center justify-between">
+    <div>
+      <h1 class="font-bold text-base leading-tight">Koreksi LJK Digital</h1>
+      <p id="headerSubtitle" class="text-xs text-blue-200 truncate max-w-[240px]">Belum ada mapel diatur</p>
+    </div>
+    <div class="text-right">
+      <span id="headerCountBadge" class="bg-blue-950 text-blue-100 text-xs font-semibold px-2.5 py-1 rounded-full">
+        0 Siswa
+      </span>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="max-w-lg mx-auto p-3 space-y-4">
+
+    <!-- ==================== TAB 1: SETUP & KUNCI ==================== -->
+    <section id="tab-setup" class="space-y-4">
+      <!-- API Key Card -->
+      <div class="bg-white rounded-xl shadow-sm p-4 border border-slate-200">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="font-bold text-sm text-slate-700">1. Koneksi AI Vision (Gemini API)</h2>
+          <span id="apiStatusBadge" class="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-medium">Wajib diisi</span>
+        </div>
+        <div class="flex gap-2">
+          <input type="password" id="apiKeyInput" placeholder="Tempel Gemini API Key (AIza...)"
+            class="flex-1 text-sm border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-600" />
+          <button onclick="toggleApiVisibility()" class="px-3 py-2 text-xs bg-slate-100 border border-slate-300 rounded-lg font-medium">
+            Lihat
+          </button>
+        </div>
+        <div class="mt-2 flex items-center justify-between text-xs text-slate-500">
+          <span>Model:</span>
+          <select id="geminiModelSelect" class="border border-slate-300 rounded px-2 py-1 text-slate-700 bg-white">
+            <option value="gemini-2.5-flash">gemini-2.5-flash (Cepat & Akurat)</option>
+            <option value="gemini-2.5-pro">gemini-2.5-pro (Presisi Tinggi)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Identitas Ujian & Bobot Nilai -->
+      <div class="bg-white rounded-xl shadow-sm p-4 border border-slate-200 space-y-3">
+        <h2 class="font-bold text-sm text-slate-700">2. Identitas Ujian & Bobot Nilai</h2>
+        
+        <div class="grid grid-cols-2 gap-2.5">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Mata Pelajaran</label>
+            <input type="text" id="inputMapel" placeholder="Contoh: Informatika"
+              class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-600" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Kelas Default</label>
+            <input type="text" id="inputKelas" placeholder="Contoh: X-A"
+              class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-600" />
+          </div>
+        </div>
+
+        <div class="pt-1">
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Jumlah Soal Pilihan Ganda (Blok A)</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" id="btnPg20" onclick="setPgCount(20)"
+              class="py-2 text-sm font-semibold rounded-lg border border-blue-600 bg-blue-600 text-white">
+              20 Soal (No. 1–20)
+            </button>
+            <button type="button" id="btnPg25" onclick="setPgCount(25)"
+              class="py-2 text-sm font-semibold rounded-lg border border-slate-300 bg-white text-slate-700">
+              25 Soal (No. 1–25)
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-700">Bobot Poin per Nomor Soal</span>
+            <span id="totalMaxScoreBadge" class="text-xs font-bold bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full">
+              Total Skor Maks: 100
+            </span>
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label class="block text-[11px] text-slate-600 mb-1">A. PG (<span id="lblCountPg">20</span> soal)</label>
+              <input type="number" step="0.5" min="0" id="bobotPG" value="2" oninput="updateMaxScoreDisplay()"
+                class="w-full text-sm font-semibold text-center border border-slate-300 rounded-lg py-1.5 bg-white" />
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-600 mb-1">B. PGK (5 soal)</label>
+              <input type="number" step="0.5" min="0" id="bobotPGK" value="6" oninput="updateMaxScoreDisplay()"
+                class="w-full text-sm font-semibold text-center border border-slate-300 rounded-lg py-1.5 bg-white" />
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-600 mb-1">C. B/S (5 soal)</label>
+              <input type="number" step="0.5" min="0" id="bobotBS" value="6" oninput="updateMaxScoreDisplay()"
+                class="w-full text-sm font-semibold text-center border border-slate-300 rounded-lg py-1.5 bg-white" />
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-500 leading-snug">
+            *Aturan Blok B (PGK) & Blok C (B/S): Penilaian mutlak per nomor soal. Jika ada 1 pilihan/baris tidak sesuai kunci, nilai nomor tersebut = 0.
+          </p>
+        </div>
+      </div>
+
+      <!-- Kunci Jawaban Blok A: Pilihan Ganda -->
+      <div class="bg-white rounded-xl shadow-sm p-4 border border-slate-200">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="font-bold text-sm text-slate-700">3. Kunci Jawaban A. Pilihan Ganda</h2>
+          <span class="text-xs text-slate-500" id="pgKeyProgress">0/20 terisi</span>
+        </div>
+        <div id="keyContainerPG" class="space-y-2"></div>
+      </div>
+
+      <!-- Kunci Jawaban Blok B: Pilihan Ganda Kompleks -->
+      <div class="bg-white rounded-xl shadow-sm p-4 border border-slate-200">
+        <h2 class="font-bold text-sm text-slate-700 mb-1">4. Kunci Jawaban B. PG Kompleks (MCMA)</h2>
+        <p class="text-xs text-slate-500 mb-3">Centang baris ke-1 s.d. ke-5 (atas ke bawah) yang benar pada tiap nomor soal.</p>
+        <div id="keyContainerPGK" class="grid grid-cols-5 gap-2"></div>
+      </div>
+
+      <!-- Kunci Jawaban Blok C: Pilihan Ganda Kategori (B/S) -->
+      <div class="bg-white rounded-xl shadow-sm p-4 border border-slate-200">
+        <h2 class="font-bold text-sm text-slate-700 mb-1">5. Kunci Jawaban C. Benar / Salah (B/S)</h2>
+        <p class="text-xs text-slate-500 mb-3">Pilih B atau S tiap baris (atas ke bawah). Biarkan kosong jika baris tidak dipakai.</p>
+        <div id="keyContainerBS" class="space-y-3"></div>
+      </div>
+
+      <button onclick="saveAllConfig(true)"
+        class="w-full bg-blue-700 active:bg-blue-800 text-white font-bold py-3.5 rounded-xl shadow-md text-sm">
+        Simpan Pengaturan & Kunci Jawaban
+      </button>
+    </section>
+
+    <!-- ==================== TAB 2: SCAN LJK ==================== -->
+    <section id="tab-scan" class="hidden space-y-4">
+      <div class="bg-white rounded-xl shadow-sm p-4 border border-slate-200 text-center space-y-3">
+        <div class="bg-blue-50 text-blue-800 text-xs p-3 rounded-lg text-left leading-relaxed">
+          <strong>Tips Foto Akurat:</strong> Pastikan seluruh bagian dari <em>Nama/Kelas</em> di atas hingga <em>Blok C (Benar/Salah)</em> masuk frame dengan terang dan tidak berbayang. Bagian D (Uraian) otomatis diabaikan.
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 pt-1">
+          <label class="cursor-pointer bg-blue-700 active:bg-blue-800 text-white font-bold py-4 px-3 rounded-xl shadow flex flex-col items-center justify-center gap-1.5">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+            <span class="text-xs">Ambil Foto Kamera</span>
+            <input type="file" accept="image/*" capture="environment" class="hidden" onchange="handleImageSelected(event)" />
+          </label>
+
+          <label class="cursor-pointer bg-slate-700 active:bg-slate-800 text-white font-bold py-4 px-3 rounded-xl shadow flex flex-col items-center justify-center gap-1.5">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+            <span class="text-xs">Pilih dari Galeri</span>
+            <input type="file" accept="image/*" class="hidden" onchange="handleImageSelected(event)" />
+          </label>
+        </div>
+      </div>
+
+      <!-- Loading Indicator -->
+      <div id="scanLoadingBox" class="hidden bg-white rounded-xl shadow-sm p-6 border border-blue-200 text-center space-y-3">
+        <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+        <p class="font-bold text-sm text-slate-700">Sedang Membaca Lembar Jawab...</p>
+        <p class="text-xs text-slate-500">Mendeteksi nama siswa, silang PG, ralat (=), centang PGK, dan B/S.</p>
+      </div>
+
+      <!-- Error Box -->
+      <div id="scanErrorBox" class="hidden bg-red-50 border border-red-300 text-red-800 rounded-xl p-4 text-xs space-y-2">
+        <p class="font-bold text-sm">Gagal Memproses Gambar</p>
+        <p id="scanErrorText"></p>
+      </div>
+
+      <!-- Verification & Quick Edit Card -->
+      <div id="scanResultBox" class="hidden bg-white rounded-xl shadow-md p-4 border-2 border-blue-500 space-y-4">
+        <div class="flex items-center justify-between border-b pb-2">
+          <h3 class="font-bold text-sm text-blue-800">Hasil Pembacaan (Cek & Simpan)</h3>
+          <span id="previewTotalScore" class="bg-blue-700 text-white font-bold text-sm px-3 py-1 rounded-full">
+            Nilai: 0
+          </span>
+        </div>
+
+        <!-- Thumbnail Foto -->
+        <div class="flex gap-3 items-start">
+          <img id="previewImageThumb" src="" alt="Preview LJK" onclick="toggleZoomImage()"
+            class="w-24 h-32 object-cover rounded-lg border border-slate-300 cursor-pointer shrink-0" />
+          <div class="flex-1 space-y-2">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-500">Nama Siswa (Edit jika perlu)</label>
+              <input type="text" id="detectedNama"
+                class="w-full text-sm font-bold border border-slate-300 rounded-lg px-2.5 py-1.5 focus:border-blue-600 focus:outline-none" />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-500">Kelas</label>
+                <input type="text" id="detectedKelas"
+                  class="w-full text-xs font-semibold border border-slate-300 rounded-lg px-2.5 py-1.5" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-500">No. Peserta</label>
+                <input type="text" id="detectedNoPeserta"
+                  class="w-full text-xs border border-slate-300 rounded-lg px-2.5 py-1.5" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p id="aiNoteBanner" class="hidden text-[11px] bg-amber-50 border border-amber-200 text-amber-800 p-2 rounded-lg"></p>
+
+        <!-- Rincian Skor per Bagian -->
+        <div class="grid grid-cols-3 gap-2 text-center bg-slate-50 p-2 rounded-lg border border-slate-200 text-xs">
+          <div>
+            <span class="text-slate-500 block text-[11px]">Skor PG</span>
+            <strong id="previewScorePG" class="text-slate-800">0</strong>
+          </div>
+          <div>
+            <span class="text-slate-500 block text-[11px]">Skor PGK</span>
+            <strong id="previewScorePGK" class="text-slate-800">0</strong>
+          </div>
+          <div>
+            <span class="text-slate-500 block text-[11px]">Skor B/S</span>
+            <strong id="previewScoreBS" class="text-slate-800">0</strong>
+          </div>
+        </div>
+
+        <!-- Koreksi Cepat Jawaban Terdeteksi -->
+        <div class="space-y-3">
+          <div>
+            <h4 class="text-xs font-bold text-slate-700 mb-1.5">A. Pilihan Ganda (Tap huruf untuk koreksi manual)</h4>
+            <div id="previewGridPG" class="grid grid-cols-5 gap-1.5"></div>
+          </div>
+
+          <div>
+            <h4 class="text-xs font-bold text-slate-700 mb-1.5">B. PG Kompleks (Tap kotak baris 1–5 untuk koreksi)</h4>
+            <div id="previewGridPGK" class="grid grid-cols-5 gap-1.5"></div>
+          </div>
+
+          <div>
+            <h4 class="text-xs font-bold text-slate-700 mb-1.5">C. Benar / Salah (Tap B/S per baris untuk koreksi)</h4>
+            <div id="previewGridBS" class="space-y-2"></div>
+          </div>
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button onclick="discardCurrentScan()"
+            class="w-1/3 py-3 rounded-xl border border-slate-300 text-slate-600 font-semibold text-xs">
+            Batal
+          </button>
+          <button onclick="saveCurrentStudent()"
+            class="w-2/3 py-3 rounded-xl bg-emerald-600 active:bg-emerald-700 text-white font-bold text-sm shadow">
+            Simpan ke Rekap Kelas
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 3: REKAP & ANALISIS ==================== -->
+    <section id="tab-analysis" class="hidden space-y-4">
+      <!-- Ringkasan Statistik Kelas -->
+      <div class="bg-white rounded-xl shadow-sm p-4 border border-slate-200">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <h2 class="font-bold text-sm text-slate-800" id="analysisTitle">Rekap Kelas</h2>
+            <p class="text-xs text-slate-500" id="analysisSubtitle">0 siswa terkoreksi</p>
+          </div>
+          <button onclick="confirmClearStudents()" class="text-xs text-red-600 font-semibold px-2.5 py-1 rounded border border-red-200 bg-red-50">
+            Reset Data Siswa
+          </button>
+        </div>
+        <div class="grid grid-cols-3 gap-2 text-center">
+          <div class="bg-blue-50 p-2.5 rounded-lg">
+            <span class="text-[11px] text-blue-700 block">Rata-rata</span>
+            <strong id="statAvg" class="text-base text-blue-900">0</strong>
+          </div>
+          <div class="bg-emerald-50 p-2.5 rounded-lg">
+            <span class="text-[11px] text-emerald-700 block">Tertinggi</span>
+            <strong id="statMax" class="text-base text-emerald-900">0</strong>
+          </div>
+          <div class="bg-amber-50 p-2.5 rounded-lg">
+            <span class="text-[11px] text-amber-700 block">Terendah</span>
+            <strong id="statMin" class="text-base text-amber-900">0</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Analisis Butir Soal: Dijawab Benar Semua -->
+      <div class="bg-white rounded-xl shadow-sm p-4 border border-slate-200 space-y-2">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+          <h3 class="font-bold text-sm text-slate-800">Soal Dijawab Benar Semua Siswa (100%)</h3>
+        </div>
+        <p class="text-xs text-slate-500">Nomor soal yang berhasil dijawab tepat oleh seluruh siswa di kelas ini:</p>
+        <div id="listAllCorrect" class="flex flex-wrap gap-1.5 pt-1">
+          <span class="text-xs text-slate-400 italic">Belum ada data siswa.</span>
+        </div>
+      </div>
+
+      <!-- Analisis Butir Soal: Hanya Sebagian yang Betul -->
+      <div class="bg-white rounded-xl shadow-sm p-4 border border-slate-200 space-y-2.5">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+          <h3 class="font-bold text-sm text-slate-800">Soal Hanya Sebagian Betul / Perlu Evaluasi</h3>
+        </div>
+        <p class="text-xs text-slate-500">Diurutkan dari soal dengan tingkat kebenaran paling rendah:</p>
+        <div id="listPartialCorrect" class="space-y-2 pt-1">
+          <span class="text-xs text-slate-400 italic">Belum ada data siswa.</span>
+        </div>
+      </div>
+
+      <!-- Daftar Nilai Siswa -->
+      <div class="bg-white rounded-xl shadow-sm p-4 border border-slate-200 space-y-2.5">
+        <h3 class="font-bold text-sm text-slate-800">Daftar Nilai Siswa</h3>
+        <div id="studentListContainer" class="divide-y divide-slate-100">
+          <p class="text-xs text-slate-400 italic py-2">Belum ada lembar jawab yang disimpan.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 4: UNDUH LAPORAN ==================== -->
+    <section id="tab-export" class="hidden space-y-4">
+      <div class="bg-white rounded-xl shadow-sm p-5 border border-slate-200 space-y-4">
+        <h2 class="font-bold text-base text-slate-800">Unduh Hasil & Analisis Kelas</h2>
+        
+        <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1.5 text-xs">
+          <div class="flex justify-between">
+            <span class="text-slate-500">Mata Pelajaran:</span>
+            <strong id="exportInfoMapel" class="text-slate-800">-</strong>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">Kelas:</span>
+            <strong id="exportInfoKelas" class="text-slate-800">-</strong>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">Jumlah Siswa Terdata:</span>
+            <strong id="exportInfoCount" class="text-slate-800">0 Siswa</strong>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">Format Soal Aktif:</span>
+            <strong id="exportInfoFormat" class="text-slate-800">20 PG + 5 PGK + 5 B/S</strong>
+          </div>
+        </div>
+
+        <div class="text-xs text-slate-600 space-y-1">
+          <p class="font-semibold text-slate-700">Isi File Excel (.xlsx) yang diunduh:</p>
+          <ul class="list-disc pl-5 space-y-1">
+            <li><strong>Sheet 1 (Rekap Nilai):</strong> Identitas Mapel & Kelas, Nama Siswa, Skor PG, Skor PGK, Skor B/S, Total Nilai, dan status benar/salah (1/0) tiap soal.</li>
+            <li><strong>Sheet 2 (Analisis Butir Soal):</strong> Daftar lengkap soal yang dijawab benar semua (100%) maupun yang hanya sebagian betul beserta persentasenya.</li>
+            <li><strong>Sheet 3 (Detail Jawaban Siswa):</strong> Rekaman pilihan jawaban mentah setiap siswa untuk arsip.</li>
+          </ul>
+        </div>
+
+        <button onclick="downloadExcelReport()"
+          class="w-full bg-emerald-600 active:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-md text-sm flex items-center justify-center gap-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+          </svg>
+          Unduh Laporan Excel (.xlsx)
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Zoom Image Modal -->
+  <div id="zoomModal" onclick="toggleZoomImage()" class="hidden fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-2">
+    <img id="zoomedImage" src="" class="max-w-full max-h-full rounded" />
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toastBox" class="hidden fixed top-16 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-lg z-50">
+  </div>
+
+  <!-- Bottom Navigation Bar -->
+  <nav class="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 grid grid-cols-4 z-30 shadow-lg">
+    <button onclick="switchTab('setup')" id="nav-setup" class="tab-active py-2.5 flex flex-col items-center justify-center gap-1 text-[11px] font-semibold">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+      </svg>
+      <span>Setup & Kunci</span>
+    </button>
+
+    <button onclick="switchTab('scan')" id="nav-scan" class="text-slate-500 py-2.5 flex flex-col items-center justify-center gap-1 text-[11px] font-semibold">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+      </svg>
+      <span>Scan LJK</span>
+    </button>
+
+    <button onclick="switchTab('analysis')" id="nav-analysis" class="text-slate-500 py-2.5 flex flex-col items-center justify-center gap-1 text-[11px] font-semibold">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+      </svg>
+      <span>Analisis</span>
+    </button>
+
+    <button onclick="switchTab('export')" id="nav-export" class="text-slate-500 py-2.5 flex flex-col items-center justify-center gap-1 text-[11px] font-semibold">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+      </svg>
+      <span>Unduh</span>
+    </button>
+  </nav>
+
+<script>
+  // ==================== STATE MANAGEMENT ====================
+  const STORAGE_KEY = 'ljk_sas_darussalam_v1';
+
+  let appState = {
+    apiKey: '',
+    model: 'gemini-2.5-flash',
+    mapel: '',
+    kelas: '',
+    pgCount: 20,
+    bobotPG: 2,
+    bobotPGK: 6,
+    bobotBS: 6,
+    keys: {
+      pg: {},   // { "1": "A", ... }
+      pgk: {},  // { "1": [1, 3], ... } (1-based row indices)
+      bs: {}    // { "1": ["B", "S", "B", "", ""], ... } (5 rows per question)
+    },
+    students: [] // Array of evaluated student objects
+  };
+
+  let currentScan = null; // Holds temporary scan result before saving
+
+  // Initialize default empty structures
+  function ensureKeyStructures() {
+    for (let i = 1; i <= 25; i++) {
+      if (!appState.keys.pg[i]) appState.keys.pg[i] = '';
+    }
+    for (let q = 1; q <= 5; q++) {
+      if (!Array.isArray(appState.keys.pgk[q])) appState.keys.pgk[q] = [];
+      if (!Array.isArray(appState.keys.bs[q]) || appState.keys.bs[q].length !== 5) {
+        appState.keys.bs[q] = ['', '', '', '', ''];
+      }
+    }
+  }
+
+  function loadState() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        appState = { ...appState, ...parsed };
+      } catch (e) {
+        console.error('Gagal memuat data tersimpan:', e);
+      }
+    }
+    ensureKeyStructures();
+
+    // Populate UI fields
+    document.getElementById('apiKeyInput').value = appState.apiKey || '';
+    document.getElementById('geminiModelSelect').value = appState.model || 'gemini-2.5-flash';
+    document.getElementById('inputMapel').value = appState.mapel || '';
+    document.getElementById('inputKelas').value = appState.kelas || '';
+    document.getElementById('bobotPG').value = appState.bobotPG;
+    document.getElementById('bobotPGK').value = appState.bobotPGK;
+    document.getElementById('bobotBS').value = appState.bobotBS;
+
+    updateApiBadge();
+    setPgCount(appState.pgCount, false);
+    renderKeyInputs();
+    updateHeaderInfo();
+  }
+
+  function saveStateToStorage() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+    updateHeaderInfo();
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toastBox');
+    t.textContent = msg;
+    t.classList.remove('hidden');
+    setTimeout(() => t.classList.add('hidden'), 2600);
+  }
+
+  function switchTab(tabName) {
+    ['setup', 'scan', 'analysis', 'export'].forEach(name => {
+      document.getElementById('tab-' + name).classList.add('hidden');
+      const nav = document.getElementById('nav-' + name);
+      nav.classList.remove('tab-active');
+      nav.classList.add('text-slate-500');
+    });
+    document.getElementById('tab-' + tabName).classList.remove('hidden');
+    const activeNav = document.getElementById('nav-' + tabName);
+    activeNav.classList.add('tab-active');
+    activeNav.classList.remove('text-slate-500');
+
+    if (tabName === 'analysis') renderAnalysisTab();
+    if (tabName === 'export') renderExportTab();
+  }
+
+  // ==================== SETUP & KUNCI JAWABAN ====================
+  function toggleApiVisibility() {
+    const inp = document.getElementById('apiKeyInput');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+  }
+
+  function updateApiBadge() {
+    const badge = document.getElementById('apiStatusBadge');
+    if (appState.apiKey && appState.apiKey.trim().length > 10) {
+      badge.textContent = 'Terpasang';
+      badge.className = 'text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold';
+    } else {
+      badge.textContent = 'Wajib diisi';
+      badge.className = 'text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-medium';
+    }
+  }
+
+  function setPgCount(count, reRender = true) {
+    appState.pgCount = count;
+    const btn20 = document.getElementById('btnPg20');
+    const btn25 = document.getElementById('btnPg25');
+    if (count === 20) {
+      btn20.className = 'py-2 text-sm font-semibold rounded-lg border border-blue-600 bg-blue-600 text-white';
+      btn25.className = 'py-2 text-sm font-semibold rounded-lg border border-slate-300 bg-white text-slate-700';
+    } else {
+      btn25.className = 'py-2 text-sm font-semibold rounded-lg border border-blue-600 bg-blue-600 text-white';
+      btn20.className = 'py-2 text-sm font-semibold rounded-lg border border-slate-300 bg-white text-slate-700';
+    }
+    document.getElementById('lblCountPg').textContent = count;
+    updateMaxScoreDisplay();
+    if (reRender) renderKeyPG();
+  }
+
+  function updateMaxScoreDisplay() {
+    const bPG = parseFloat(document.getElementById('bobotPG').value) || 0;
+    const bPGK = parseFloat(document.getElementById('bobotPGK').value) || 0;
+    const bBS = parseFloat(document.getElementById('bobotBS').value) || 0;
+    const maxTotal = (appState.pgCount * bPG) + (5 * bPGK) + (5 * bBS);
+    document.getElementById('totalMaxScoreBadge').textContent = `Total Skor Maks: ${Number(maxTotal.toFixed(2))}`;
+  }
+
+  function renderKeyInputs() {
+    renderKeyPG();
+    renderKeyPGK();
+    renderKeyBS();
+  }
+
+  function renderKeyPG() {
+    const container = document.getElementById('keyContainerPG');
+    container.innerHTML = '';
+    const options = ['A', 'B', 'C', 'D', 'E'];
+    let filled = 0;
+
+    for (let i = 1; i <= appState.pgCount; i++) {
+      const currentVal = appState.keys.pg[i] || '';
+      if (currentVal) filled++;
+
+      const row = document.createElement('div');
+      row.className = 'flex items-center justify-between bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200';
+      
+      const label = document.createElement('span');
+      label.className = 'text-xs font-bold text-slate-700 w-8';
+      label.textContent = `${i}.`;
+      row.appendChild(label);
+
+      const btnGroup = document.createElement('div');
+      btnGroup.className = 'flex gap-1.5';
+      options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        const isSelected = currentVal === opt;
+        btn.className = isSelected
+          ? 'w-9 h-8 rounded-md text-xs font-bold bg-blue-700 text-white shadow-sm'
+          : 'w-9 h-8 rounded-md text-xs font-semibold bg-white text-slate-600 border border-slate-300';
+        btn.textContent = opt;
+        btn.onclick = () => {
+          appState.keys.pg[i] = isSelected ? '' : opt;
+          renderKeyPG();
+        };
+        btnGroup.appendChild(btn);
+      });
+      row.appendChild(btnGroup);
+      container.appendChild(row);
+    }
+    document.getElementById('pgKeyProgress').textContent = `${filled}/${appState.pgCount} terisi`;
+  }
+
+  function renderKeyPGK() {
+    const container = document.getElementById('keyContainerPGK');
+    container.innerHTML = '';
+
+    for (let q = 1; q <= 5; q++) {
+      const col = document.createElement('div');
+      col.className = 'bg-slate-50 border border-slate-200 rounded-lg p-2 flex flex-col items-center gap-1.5';
+
+      const title = document.createElement('span');
+      title.className = 'text-xs font-bold text-slate-700';
+      title.textContent = `No. ${q}`;
+      col.appendChild(title);
+
+      for (let r = 1; r <= 5; r++) {
+        const isChecked = appState.keys.pgk[q].includes(r);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = isChecked
+          ? 'w-full h-8 rounded bg-blue-700 text-white font-bold text-xs shadow-sm'
+          : 'w-full h-8 rounded bg-white border border-slate-300 text-slate-400 text-xs';
+        btn.textContent = isChecked ? `✓ (${r})` : `${r}`;
+        btn.onclick = () => {
+          const arr = appState.keys.pgk[q];
+          if (arr.includes(r)) {
+            appState.keys.pgk[q] = arr.filter(x => x !== r);
+          } else {
+            appState.keys.pgk[q] = [...arr, r].sort((a, b) => a - b);
+          }
+          renderKeyPGK();
+        };
+        col.appendChild(btn);
+      }
+      container.appendChild(col);
+    }
+  }
+
+  function renderKeyBS() {
+    const container = document.getElementById('keyContainerBS');
+    container.innerHTML = '';
+
+    for (let q = 1; q <= 5; q++) {
+      const card = document.createElement('div');
+      card.className = 'bg-slate-50 border border-slate-200 rounded-lg p-2.5';
+
+      const header = document.createElement('div');
+      header.className = 'text-xs font-bold text-slate-700 mb-2';
+      header.textContent = `Soal B/S Nomor ${q}`;
+      card.appendChild(header);
+
+      const grid = document.createElement('div');
+      grid.className = 'grid grid-cols-5 gap-1.5';
+
+      for (let r = 0; r < 5; r++) {
+        const val = appState.keys.bs[q][r];
+        const cell = document.createElement('div');
+        cell.className = 'bg-white border border-slate-200 rounded p-1 text-center space-y-1';
+
+        const lbl = document.createElement('div');
+        lbl.className = 'text-[10px] text-slate-400 font-semibold';
+        lbl.textContent = `Brs ${r + 1}`;
+        cell.appendChild(lbl);
+
+        const btnRow = document.createElement('div');
+        btnRow.className = 'flex gap-1 justify-center';
+        ['B', 'S'].forEach(opt => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          const active = val === opt;
+          b.className = active
+            ? (opt === 'B' ? 'flex-1 py-1 rounded text-[11px] font-bold bg-emerald-600 text-white' : 'flex-1 py-1 rounded text-[11px] font-bold bg-rose-600 text-white')
+            : 'flex-1 py-1 rounded text-[11px] font-semibold bg-slate-100 text-slate-500';
+          b.textContent = opt;
+          b.onclick = () => {
+            appState.keys.bs[q][r] = active ? '' : opt;
+            renderKeyBS();
+          };
+          btnRow.appendChild(b);
+        });
+        cell.appendChild(btnRow);
+        grid.appendChild(cell);
+      }
+
+      card.appendChild(grid);
+      container.appendChild(card);
+    }
+  }
+
+  function saveAllConfig(notify = false) {
+    appState.apiKey = document.getElementById('apiKeyInput').value.trim();
+    appState.model = document.getElementById('geminiModelSelect').value;
+    appState.mapel = document.getElementById('inputMapel').value.trim();
+    appState.kelas = document.getElementById('inputKelas').value.trim();
+    appState.bobotPG = parseFloat(document.getElementById('bobotPG').value) || 0;
+    appState.bobotPGK = parseFloat(document.getElementById('bobotPGK').value) || 0;
+    appState.bobotBS = parseFloat(document.getElementById('bobotBS').value) || 0;
+
+    updateApiBadge();
+    saveStateToStorage();
+    if (notify) showToast('Pengaturan & Kunci Jawaban tersimpan!');
+  }
+
+  function updateHeaderInfo() {
+    const mapelText = appState.mapel || 'Mapel belum diisi';
+    const kelasText = appState.kelas ? `Kelas ${appState.kelas}` : '';
+    document.getElementById('headerSubtitle').textContent = kelasText ? `${mapelText} • ${kelasText}` : mapelText;
+    document.getElementById('headerCountBadge').textContent = `${appState.students.length} Siswa`;
+  }
+
+  // ==================== IMAGE PROCESSING & GEMINI VISION ====================
+  function compressImageToBase64(file, maxDim = 1600, quality = 0.85) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          const dataUrl = canvas.toDataURL('image/jpeg', quality);
+          resolve({
+            dataUrl,
+            base64: dataUrl.split(',')[1]
+          });
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleImageSelected(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    event.target.value = ''; // reset input so same file can be re-selected
+
+    saveAllConfig(false);
+
+    if (!appState.apiKey) {
+      showToast('Masukkan Gemini API Key dulu di tab Setup!');
+      switchTab('setup');
+      return;
+    }
+
+    document.getElementById('scanResultBox').classList.add('hidden');
+    document.getElementById('scanErrorBox').classList.add('hidden');
+    document.getElementById('scanLoadingBox').classList.remove('hidden');
+
+    try {
+      const { dataUrl, base64 } = await compressImageToBase64(file, 1600, 0.86);
+      const parsedData = await analyzeSheetWithGemini(base64);
+
+      currentScan = {
+        imageDataUrl: dataUrl,
+        nama: (parsedData.nama || '').trim(),
+        kelas: (parsedData.kelas || appState.kelas || '').trim(),
+        nomor_peserta: (parsedData.nomor_peserta || '').trim(),
+        pg: {},
+        pgk: {},
+        bs: {},
+        catatan_ai: parsedData.catatan_ai || ''
+      };
+
+      // Normalize PG (1..25)
+      for (let i = 1; i <= 25; i++) {
+        const val = (parsedData.pg && parsedData.pg[String(i)]) ? String(parsedData.pg[String(i)]).toUpperCase().trim() : '';
+        currentScan.pg[i] = ['A', 'B', 'C', 'D', 'E'].includes(val) ? val : '';
+      }
+
+      // Normalize PGK (1..5 -> array of 1..5)
+      for (let q = 1; q <= 5; q++) {
+        const rawArr = (parsedData.pgk && Array.isArray(parsedData.pgk[String(q)])) ? parsedData.pgk[String(q)] : [];
+        currentScan.pgk[q] = rawArr.map(n => parseInt(n, 10)).filter(n => n >= 1 && n <= 5).sort((a, b) => a - b);
+      }
+
+      // Normalize BS (1..5 -> array of 5 strings "B", "S", "")
+      for (let q = 1; q <= 5; q++) {
+        const rawRows = (parsedData.bs && Array.isArray(parsedData.bs[String(q)])) ? parsedData.bs[String(q)] : [];
+        const cleanRows = [];
+        for (let r = 0; r < 5; r++) {
+          const cellVal = rawRows[r] ? String(rawRows[r]).toUpperCase().trim() : '';
+          cleanRows.push(cellVal === 'B' || cellVal === 'S' ? cellVal : '');
+        }
+        currentScan.bs[q] = cleanRows;
+      }
+
+      document.getElementById('scanLoadingBox').classList.add('hidden');
+      renderScanPreview();
+    } catch (err) {
+      document.getElementById('scanLoadingBox').classList.add('hidden');
+      document.getElementById('scanErrorBox').classList.remove('hidden');
+      document.getElementById('scanErrorText').textContent = err.message || 'Terjadi kesalahan saat menghubungi Gemini API.';
+    }
+  }
+
+  async function analyzeSheetWithGemini(base64Jpeg) {
+    const promptText = `Kamu adalah sistem OMR & OCR presisi tinggi untuk membaca foto Lembar Jawab Ujian SMA Islam Darussalam.
+Perhatikan tata letak kertas secara saksama:
+1. IDENTITAS (Bagian Atas):
+   - "nama": tulisan tangan di sebelah label "Nama :".
+   - "nomor_peserta": tulisan tangan di sebelah label "Nomor Peserta :".
+   - "kelas": tulisan tangan di sebelah label "Kelas :".
+2. BLOK A. PILIHAN GANDA (Nomor 1 sampai ${appState.pgCount}):
+   - Terdiri dari kelompok grid 1-5, 6-10, 11-15, 16-20, dan 21-25 dengan kotak huruf A, B, C, D, E.
+   - Siswa menandai jawaban dengan tanda SILANG [X].
+   - ATURAN RALAT PENTING: Jika sebuah kotak memiliki dua garis coretan horizontal (=) atau dicoret penuh untuk membatalkan jawaban, ABAIKAN kotak tersebut dan ambil kotak lain yang memiliki tanda silang [X] bersih.
+   - Jika kosong atau ada lebih dari satu silang [X] yang sama-sama tidak dicoret, isi dengan "".
+   - Kembalikan objek "pg" dengan key "1" sampai "${appState.pgCount}" berisi "A", "B", "C", "D", "E", atau "".
+3. BLOK B. PILIHAN GANDA KOMPLEKS (Nomor 1 sampai 5):
+   - Terdapat 5 kolom vertikal (nomor 1, 2, 3, 4, 5). Setiap nomor memiliki 5 kotak vertikal dari atas (baris 1) ke bawah (baris 5).
+   - Siswa memberi tanda CENTANG [√] pada satu atau lebih kotak.
+   - Kembalikan objek "pgk" dengan key "1" sampai "5", masing-masing berupa array angka baris yang dicentang (contoh: [1, 3, 5] atau [] jika kosong).
+4. BLOK C. PILIHAN GANDA KATEGORI / BENAR SALAH (Nomor 1 sampai 5):
+   - Terdapat 5 tabel kecil (nomor 1, 2, 3, 4, 5). Setiap tabel memiliki 5 baris dari atas (indeks 0) ke bawah (indeks 4), dan 2 kolom: kolom kiri "B" (Benar) dan kolom kanan "S" (Salah).
+   - Siswa memberi tanda CENTANG [√] pada kolom B atau S di tiap baris.
+   - Kembalikan objek "bs" dengan key "1" sampai "5", masing-masing berupa array tepat 5 elemen berisi "B", "S", atau "" (jika baris kosong).
+5. BLOK D. URAIAN: Abaikan sepenuhnya.
+6. "catatan_ai": Tulis catatan singkat bahasa Indonesia jika ada tulisan tangan kurang jelas atau coretan meragukan, atau "" jika semua terbaca jelas.
+
+Kembalikan HANYA JSON valid dengan skema:
+{
+  "nama": "string",
+  "nomor_peserta": "string",
+  "kelas": "string",
+  "pg": {"1": "A", ...},
+  "pgk": {"1": [1, 2], ...},
+  "bs": {"1": ["B", "S", "", "", ""], ...},
+  "catatan_ai": "string"
+}`;
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${appState.model}:generateContent?key=${encodeURIComponent(appState.apiKey)}`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { text: promptText },
+            { inline_data: { mime_type: 'image/jpeg', data: base64Jpeg } }
+          ]
+        }],
+        generationConfig: {
+          temperature: 0.1,
+          responseMimeType: 'application/json'
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const errJson = await response.json().catch(() => ({}));
+      const msg = errJson.error?.message || `HTTP Error ${response.status}`;
+      throw new Error(`API Error: ${msg}`);
+    }
+
+    const data = await response.json();
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const cleanedJson = rawText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+    return JSON.parse(cleanedJson);
+  }
+
+  // ==================== SCORING & PREVIEW VERIFICATION ====================
+  function evaluateStudentAnswers(scanObj) {
+    let scorePG = 0;
+    let scorePGK = 0;
+    let scoreBS = 0;
+    const itemResults = []; // Tracks each active question for item analysis
+
+    // 1. Evaluasi Blok A (PG)
+    for (let i = 1; i <= appState.pgCount; i++) {
+      const k = appState.keys.pg[i] || '';
+      const ans = scanObj.pg[i] || '';
+      const isCorrect = (k !== '' && ans === k);
+      if (isCorrect) scorePG += appState.bobotPG;
+
+      itemResults.push({
+        code: `PG-${i}`,
+        label: `PG No. ${i}`,
+        type: 'Pilihan Ganda',
+        keyDisplay: k || '-',
+        studentDisplay: ans || 'Kosong',
+        correct: isCorrect ? 1 : 0
+      });
+    }
+
+    // 2. Evaluasi Blok B (PG Kompleks - Mutlak)
+    for (let q = 1; q <= 5; q++) {
+      const kArr = [...(appState.keys.pgk[q] || [])].sort((a, b) => a - b);
+      const ansArr = [...(scanObj.pgk[q] || [])].sort((a, b) => a - b);
+      const isCorrect = kArr.length > 0 &&
+        kArr.length === ansArr.length &&
+        kArr.every((val, idx) => val === ansArr[idx]);
+
+      if (isCorrect) scorePGK += appState.bobotPGK;
+
+      itemResults.push({
+        code: `PGK-${q}`,
+        label: `PGK No. ${q}`,
+        type: 'PG Kompleks',
+        keyDisplay: kArr.length ? `Brs ${kArr.join(',')}` : '-',
+        studentDisplay: ansArr.length ? `Brs ${ansArr.join(',')}` : 'Kosong',
+        correct: isCorrect ? 1 : 0
+      });
+    }
+
+    // 3. Evaluasi Blok C (Benar/Salah - Mutlak per Nomor Soal)
+    for (let q = 1; q <= 5; q++) {
+      const kRows = appState.keys.bs[q] || ['', '', '', '', ''];
+      const ansRows = scanObj.bs[q] || ['', '', '', '', ''];
+
+      let hasActiveKey = false;
+      let allRowsMatch = true;
+      const keySummary = [];
+      const ansSummary = [];
+
+      for (let r = 0; r < 5; r++) {
+        if (kRows[r] === 'B' || kRows[r] === 'S') {
+          hasActiveKey = true;
+          keySummary.push(kRows[r]);
+          ansSummary.push(ansRows[r] || '-');
+          if (ansRows[r] !== kRows[r]) {
+            allRowsMatch = false;
+          }
+        }
+      }
+
+      const isCorrect = hasActiveKey && allRowsMatch;
+      if (isCorrect) scoreBS += appState.bobotBS;
+
+      itemResults.push({
+        code: `BS-${q}`,
+        label: `B/S No. ${q}`,
+        type: 'Benar/Salah',
+        keyDisplay: keySummary.length ? keySummary.join('') : '-',
+        studentDisplay: ansSummary.length ? ansSummary.join('') : 'Kosong',
+        correct: isCorrect ? 1 : 0
+      });
+    }
+
+    const totalScore = Number((scorePG + scorePGK + scoreBS).toFixed(2));
+    return {
+      scorePG: Number(scorePG.toFixed(2)),
+      scorePGK: Number(scorePGK.toFixed(2)),
+      scoreBS: Number(scoreBS.toFixed(2)),
+      totalScore,
+      itemResults
+    };
+  }
+
+  function renderScanPreview() {
+    if (!currentScan) return;
+    document.getElementById('scanResultBox').classList.remove('hidden');
+    document.getElementById('previewImageThumb').src = currentScan.imageDataUrl;
+    document.getElementById('zoomedImage').src = currentScan.imageDataUrl;
+    document.getElementById('detectedNama').value = currentScan.nama;
+    document.getElementById('detectedKelas').value = currentScan.kelas;
+    document.getElementById('detectedNoPeserta').value = currentScan.nomor_peserta;
+
+    const noteEl = document.getElementById('aiNoteBanner');
+    if (currentScan.catatan_ai) {
+      noteEl.textContent = `Catatan AI: ${currentScan.catatan_ai}`;
+      noteEl.classList.remove('hidden');
+    } else {
+      noteEl.classList.add('hidden');
+    }
+
+    refreshPreviewGridsAndScores();
+  }
+
+  function refreshPreviewGridsAndScores() {
+    const evalRes = evaluateStudentAnswers(currentScan);
+    document.getElementById('previewTotalScore').textContent = `Nilai: ${evalRes.totalScore}`;
+    document.getElementById('previewScorePG').textContent = evalRes.scorePG;
+    document.getElementById('previewScorePGK').textContent = evalRes.scorePGK;
+    document.getElementById('previewScoreBS').textContent = evalRes.scoreBS;
+
+    // 1. Grid PG (Tap to cycle: A -> B -> C -> D -> E -> '')
+    const pgContainer = document.getElementById('previewGridPG');
+    pgContainer.innerHTML = '';
+    const cycleOpts = ['A', 'B', 'C', 'D', 'E', ''];
+
+    for (let i = 1; i <= appState.pgCount; i++) {
+      const ans = currentScan.pg[i] || '';
+      const key = appState.keys.pg[i] || '';
+      const isOk = key !== '' && ans === key;
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = isOk
+        ? 'py-1.5 px-1 rounded border border-emerald-400 bg-emerald-50 text-emerald-900 text-xs font-bold'
+        : 'py-1.5 px-1 rounded border border-rose-300 bg-rose-50 text-rose-800 text-xs font-bold';
+      btn.innerHTML = `<span class="text-[10px] font-normal text-slate-500">${i}.</span> ${ans || '-'}`;
+      btn.onclick = () => {
+        const nextIdx = (cycleOpts.indexOf(ans) + 1) % cycleOpts.length;
+        currentScan.pg[i] = cycleOpts[nextIdx];
+        refreshPreviewGridsAndScores();
+      };
+      pgContainer.appendChild(btn);
+    }
+
+    // 2. Grid PGK (Tap row 1..5 to toggle)
+    const pgkContainer = document.getElementById('previewGridPGK');
+    pgkContainer.innerHTML = '';
+
+    for (let q = 1; q <= 5; q++) {
+      const kArr = appState.keys.pgk[q] || [];
+      const ansArr = currentScan.pgk[q] || [];
+      const isOk = kArr.length > 0 && kArr.length === ansArr.length && kArr.every((v, idx) => v === ansArr[idx]);
+
+      const col = document.createElement('div');
+      col.className = isOk
+        ? 'p-1.5 rounded border border-emerald-400 bg-emerald-50 flex flex-col items-center gap-1'
+        : 'p-1.5 rounded border border-rose-300 bg-rose-50 flex flex-col items-center gap-1';
+
+      const lbl = document.createElement('span');
+      lbl.className = 'text-[10px] font-bold text-slate-700';
+      lbl.textContent = `No.${q}`;
+      col.appendChild(lbl);
+
+      for (let r = 1; r <= 5; r++) {
+        const active = ansArr.includes(r);
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = active
+          ? 'w-full h-6 rounded bg-blue-700 text-white text-[10px] font-bold'
+          : 'w-full h-6 rounded bg-white border border-slate-300 text-slate-400 text-[10px]';
+        b.textContent = active ? `✓${r}` : `${r}`;
+        b.onclick = () => {
+          if (active) {
+            currentScan.pgk[q] = ansArr.filter(x => x !== r);
+          } else {
+            currentScan.pgk[q] = [...ansArr, r].sort((a, b) => a - b);
+          }
+          refreshPreviewGridsAndScores();
+        };
+        col.appendChild(b);
+      }
+      pgkContainer.appendChild(col);
+    }
+
+    // 3. Grid BS (Tap row to cycle B -> S -> '')
+    const bsContainer = document.getElementById('previewGridBS');
+    bsContainer.innerHTML = '';
+    const bsCycle = ['B', 'S', ''];
+
+    for (let q = 1; q <= 5; q++) {
+      const evalItem = evalRes.itemResults.find(it => it.code === `BS-${q}`);
+      const isOk = evalItem && evalItem.correct === 1;
+
+      const rowCard = document.createElement('div');
+      rowCard.className = isOk
+        ? 'p-2 rounded border border-emerald-400 bg-emerald-50 flex items-center justify-between'
+        : 'p-2 rounded border border-rose-300 bg-rose-50 flex items-center justify-between';
+
+      const title = document.createElement('span');
+      title.className = 'text-xs font-bold text-slate-700 w-12';
+      title.textContent = `No. ${q}`;
+      rowCard.appendChild(title);
+
+      const btns = document.createElement('div');
+      btns.className = 'flex gap-1.5 flex-1 justify-end';
+      for (let r = 0; r < 5; r++) {
+        const val = currentScan.bs[q][r] || '';
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = val === 'B'
+          ? 'w-9 h-7 rounded bg-emerald-600 text-white text-xs font-bold'
+          : val === 'S'
+            ? 'w-9 h-7 rounded bg-rose-600 text-white text-xs font-bold'
+            : 'w-9 h-7 rounded bg-white border border-slate-300 text-slate-400 text-xs';
+        b.textContent = val || '-';
+        b.onclick = () => {
+          const next = bsCycle[(bsCycle.indexOf(val) + 1) % bsCycle.length];
+          currentScan.bs[q][r] = next;
+          refreshPreviewGridsAndScores();
+        };
+        btns.appendChild(b);
+      }
+      rowCard.appendChild(btns);
+      bsContainer.appendChild(rowCard);
+    }
+  }
+
+  function toggleZoomImage() {
+    document.getElementById('zoomModal').classList.toggle('hidden');
+  }
+
+  function discardCurrentScan() {
+    currentScan = null;
+    document.getElementById('scanResultBox').classList.add('hidden');
+  }
+
+  function saveCurrentStudent() {
+    if (!currentScan) return;
+    const nama = document.getElementById('detectedNama').value.trim() || `Siswa ${appState.students.length + 1}`;
+    const kelas = document.getElementById('detectedKelas').value.trim() || appState.kelas || '-';
+    const noPeserta = document.getElementById('detectedNoPeserta').value.trim() || '-';
+
+    const evalRes = evaluateStudentAnswers(currentScan);
+
+    appState.students.push({
+      id: Date.now(),
+      nama,
+      kelas,
+      nomor_peserta: noPeserta,
+      pg: { ...currentScan.pg },
+      pgk: JSON.parse(JSON.stringify(currentScan.pgk)),
+      bs: JSON.parse(JSON.stringify(currentScan.bs)),
+      scorePG: evalRes.scorePG,
+      scorePGK: evalRes.scorePGK,
+      scoreBS: evalRes.scoreBS,
+      totalScore: evalRes.totalScore,
+      itemResults: evalRes.itemResults
+    });
+
+    saveStateToStorage();
+    discardCurrentScan();
+    showToast(`Nilai ${nama} (${evalRes.totalScore}) tersimpan!`);
+  }
+
+  // ==================== REKAP & ANALISIS KELAS ====================
+  function computeClassItemAnalysis() {
+    const totalStudents = appState.students.length;
+    if (totalStudents === 0) return [];
+
+    // Re-evaluate all students against latest keys & weights
+    const statsMap = {};
+    appState.students.forEach(st => {
+      const freshEval = evaluateStudentAnswers(st);
+      st.scorePG = freshEval.scorePG;
+      st.scorePGK = freshEval.scorePGK;
+      st.scoreBS = freshEval.scoreBS;
+      st.totalScore = freshEval.totalScore;
+      st.itemResults = freshEval.itemResults;
+
+      freshEval.itemResults.forEach(item => {
+        if (!statsMap[item.code]) {
+          statsMap[item.code] = {
+            code: item.code,
+            label: item.label,
+            type: item.type,
+            keyDisplay: item.keyDisplay,
+            correctCount: 0,
+            totalStudents: totalStudents
+          };
+        }
+        statsMap[item.code].correctCount += item.correct;
+      });
+    });
+
+    return Object.values(statsMap).map(item => ({
+      ...item,
+      wrongCount: item.totalStudents - item.correctCount,
+      percentage: Math.round((item.correctCount / item.totalStudents) * 100)
+    }));
+  }
+
+  function renderAnalysisTab() {
+    const students = appState.students;
+    const mapel = appState.mapel || 'Semua Mapel';
+    const kelas = appState.kelas || '-';
+    document.getElementById('analysisTitle').textContent = `${mapel} (Kelas ${kelas})`;
+    document.getElementById('analysisSubtitle').textContent = `${students.length} siswa terkoreksi`;
+
+    if (students.length === 0) {
+      document.getElementById('statAvg').textContent = '0';
+      document.getElementById('statMax').textContent = '0';
+      document.getElementById('statMin').textContent = '0';
+      document.getElementById('listAllCorrect').innerHTML = '<span class="text-xs text-slate-400 italic">Belum ada data siswa.</span>';
+      document.getElementById('listPartialCorrect').innerHTML = '<span class="text-xs text-slate-400 italic">Belum ada data siswa.</span>';
+      document.getElementById('studentListContainer').innerHTML = '<p class="text-xs text-slate-400 italic py-2">Belum ada lembar jawab yang disimpan.</p>';
+      return;
+    }
+
+    const itemAnalysis = computeClassItemAnalysis();
+    saveStateToStorage();
+
+    // Summary stats
+    const scores = students.map(s => s.totalScore);
+    const avg = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1);
+    const max = Math.max(...scores);
+    const min = Math.min(...scores);
+    document.getElementById('statAvg').textContent = avg;
+    document.getElementById('statMax').textContent = max;
+    document.getElementById('statMin').textContent = min;
+
+    // 1. Soal dijawab benar semua siswa (100%)
+    const allCorrectItems = itemAnalysis.filter(it => it.correctCount === it.totalStudents);
+    const allCorrectEl = document.getElementById('listAllCorrect');
+    if (allCorrectItems.length === 0) {
+      allCorrectEl.innerHTML = '<span class="text-xs text-slate-500">Belum ada soal yang dijawab benar 100% oleh seluruh siswa.</span>';
+    } else {
+      allCorrectEl.innerHTML = allCorrectItems.map(it => `
+        <span class="bg-emerald-100 text-emerald-900 border border-emerald-300 text-xs font-bold px-2.5 py-1 rounded-lg">
+          ${it.label}
+        </span>
+      `).join('');
+    }
+
+    // 2. Soal hanya sebagian yang betul (< 100%), sorted ascending by percentage
+    const partialItems = itemAnalysis
+      .filter(it => it.correctCount < it.totalStudents)
+      .sort((a, b) => a.percentage - b.percentage);
+
+    const partialEl = document.getElementById('listPartialCorrect');
+    if (partialItems.length === 0) {
+      partialEl.innerHTML = '<span class="text-xs text-emerald-700 font-semibold">Luar biasa! Semua soal dijawab benar 100% oleh seluruh siswa.</span>';
+    } else {
+      partialEl.innerHTML = partialItems.map(it => {
+        const barColor = it.percentage < 50 ? 'bg-rose-500' : 'bg-amber-500';
+        return `
+          <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-200 space-y-1">
+            <div class="flex justify-between items-center text-xs">
+              <span class="font-bold text-slate-800">${it.label} <span class="font-normal text-slate-500">(Kunci: ${it.keyDisplay})</span></span>
+              <span class="font-bold ${it.percentage < 50 ? 'text-rose-700' : 'text-amber-700'}">
+                ${it.correctCount}/${it.totalStudents} siswa (${it.percentage}%)
+              </span>
+            </div>
+            <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+              <div class="${barColor} h-full" style="width: ${it.percentage}%"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 3. Student list
+    const studentContainer = document.getElementById('studentListContainer');
+    studentContainer.innerHTML = students.map((st, idx) => `
+      <div class="py-2.5 flex items-center justify-between gap-2">
+        <div class="min-w-0 flex-1">
+          <p class="font-bold text-sm text-slate-800 truncate">${idx + 1}. ${st.nama}</p>
+          <p class="text-[11px] text-slate-500">
+            Kelas ${st.kelas} • PG: ${st.scorePG} | PGK: ${st.scorePGK} | B/S: ${st.scoreBS}
+          </p>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <span class="bg-blue-100 text-blue-900 font-bold text-xs px-2.5 py-1 rounded-lg">
+            ${st.totalScore}
+          </span>
+          <button onclick="deleteStudent(${st.id})" class="text-rose-500 p-1.5 text-xs font-bold" title="Hapus">
+            ✕
+          </button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function deleteStudent(id) {
+    if (!confirm('Hapus data nilai siswa ini?')) return;
+    appState.students = appState.students.filter(s => s.id !== id);
+    saveStateToStorage();
+    renderAnalysisTab();
+    showToast('Data siswa dihapus');
+  }
+
+  function confirmClearStudents() {
+    if (appState.students.length === 0) return;
+    if (!confirm('Hapus SEMUA data nilai siswa di kelas ini? (Kunci jawaban tetap tersimpan)')) return;
+    appState.students = [];
+    saveStateToStorage();
+    renderAnalysisTab();
+    showToast('Semua data siswa telah direset');
+  }
+
+  // ==================== EXPORT TO EXCEL (.XLSX) ====================
+  function renderExportTab() {
+    document.getElementById('exportInfoMapel').textContent = appState.mapel || '(Belum diisi)';
+    document.getElementById('exportInfoKelas').textContent = appState.kelas || '(Belum diisi)';
+    document.getElementById('exportInfoCount').textContent = `${appState.students.length} Siswa`;
+    document.getElementById('exportInfoFormat').textContent = `${appState.pgCount} PG + 5 PGK + 5 B/S`;
+  }
+
+  function downloadExcelReport() {
+    if (appState.students.length === 0) {
+      showToast('Belum ada data siswa untuk diunduh!');
+      return;
+    }
+
+    if (typeof XLSX === 'undefined') {
+      alert('Pustaka Excel gagal dimuat. Pastikan koneksi internet aktif saat membuka halaman ini.');
+      return;
+    }
+
+    const itemAnalysis = computeClassItemAnalysis();
+    const mapel = appState.mapel || 'Mata Pelajaran';
+    const kelas = appState.kelas || 'Kelas';
+    const tgl = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+
+    const wb = XLSX.utils.book_new();
+
+    // --- SHEET 1: REKAP NILAI ---
+    const questionHeaders = itemAnalysis.map(it => it.label);
+    const sheet1Data = [
+      ['REKAPITULASI NILAI UJIAN (LJK DIGITAL)'],
+      ['Mata Pelajaran', mapel],
+      ['Kelas', kelas],
+      ['Tanggal Unduh', tgl],
+      ['Jumlah Siswa', appState.students.length],
+      [],
+      ['No', 'Nama Siswa', 'Nomor Peserta', 'Kelas', 'Skor PG', 'Skor PGK', 'Skor B/S', 'Total Nilai', ...questionHeaders]
+    ];
+
+    appState.students.forEach((st, idx) => {
+      const perItemBinary = st.itemResults.map(ir => ir.correct);
+      sheet1Data.push([
+        idx + 1,
+        st.nama,
+        st.nomor_peserta,
+        st.kelas,
+        st.scorePG,
+        st.scorePGK,
+        st.scoreBS,
+        st.totalScore,
+        ...perItemBinary
+      ]);
+    });
+
+    const ws1 = XLSX.utils.aoa_to_sheet(sheet1Data);
+    XLSX.utils.book_append_sheet(wb, ws1, 'Rekap Nilai');
+
+    // --- SHEET 2: ANALISIS BUTIR SOAL ---
+    const sheet2Data = [
+      ['ANALISIS BUTIR SOAL PER KELAS'],
+      ['Mata Pelajaran', mapel],
+      ['Kelas', kelas],
+      ['Total Siswa', appState.students.length],
+      [],
+      ['Kode Soal', 'Nomor & Jenis Soal', 'Bentuk Soal', 'Kunci Jawaban', 'Jumlah Siswa Benar', 'Jumlah Siswa Salah', 'Persentase Benar (%)', 'Status Penguasaan Kelas']
+    ];
+
+    itemAnalysis.forEach(it => {
+      let status = 'Hanya Sebagian Betul';
+      if (it.correctCount === it.totalStudents) status = 'Dijawab Benar Semua (100%)';
+      else if (it.correctCount === 0) status = 'Tidak Ada yang Benar (0%)';
+
+      sheet2Data.push([
+        it.code,
+        it.label,
+        it.type,
+        it.keyDisplay,
+        it.correctCount,
+        it.wrongCount,
+        it.percentage,
+        status
+      ]);
+    });
+
+    const ws2 = XLSX.utils.aoa_to_sheet(sheet2Data);
+    XLSX.utils.book_append_sheet(wb, ws2, 'Analisis Butir Soal');
+
+    // --- SHEET 3: DETAIL JAWABAN MENTAH ---
+    const sheet3Data = [
+      ['DETAIL JAWABAN TERDETEKSI PER SISWA'],
+      ['Mata Pelajaran', mapel, 'Kelas', kelas],
+      [],
+      ['No', 'Nama Siswa', 'Kelas', ...questionHeaders]
+    ];
+
+    appState.students.forEach((st, idx) => {
+      const rawAns = st.itemResults.map(ir => ir.studentDisplay);
+      sheet3Data.push([idx + 1, st.nama, st.kelas, ...rawAns]);
+    });
+
+    const ws3 = XLSX.utils.aoa_to_sheet(sheet3Data);
+    XLSX.utils.book_append_sheet(wb, ws3, 'Detail Jawaban Siswa');
+
+    const safeMapel = mapel.replace(/[^a-z0-9]/gi, '_');
+    const safeKelas = kelas.replace(/[^a-z0-9]/gi, '_');
+    const fileName = `Hasil_LJK_${safeMapel}_${safeKelas}.xlsx`;
+
+    XLSX.writeFile(wb, fileName);
+    showToast('File Excel berhasil diunduh!');
+  }
+
+  // Boot app
+  window.addEventListener('DOMContentLoaded', loadState);
+</script>
+</body>
+</html>
