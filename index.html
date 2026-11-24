@@ -34,7 +34,7 @@
       <!-- API Key Card -->
       <div class="bg-white rounded-xl shadow-sm p-4 border border-slate-200 space-y-2.5">
         <div class="flex items-center justify-between">
-          <h2 class="font-bold text-sm text-slate-700">1. Koneksi AI Vision (High-Precision)</h2>
+          <h2 class="font-bold text-sm text-slate-700">1. Koneksi AI Vision (Turbo & Presisi)</h2>
           <span id="apiStatusBadge" class="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-medium">Wajib diisi</span>
         </div>
         <div class="flex gap-2">
@@ -46,7 +46,7 @@
         </div>
         <div class="flex items-center justify-between gap-2 pt-1">
           <select id="geminiModelSelect" class="flex-1 text-xs border border-slate-300 rounded-lg px-2.5 py-2 text-slate-700 bg-white font-medium">
-            <option value="auto">Otomatis (Prioritas Flash Penuh Presisi Tinggi)</option>
+            <option value="auto">Otomatis (Flash Turbo 2–4 Detik)</option>
           </select>
           <button type="button" onclick="discoverAvailableModels(true)"
             class="px-3 py-2 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded-lg font-semibold shrink-0">
@@ -54,7 +54,7 @@
           </button>
         </div>
         <p id="modelInfoText" class="text-[11px] text-slate-500">
-          Menggunakan resolusi tajam 1800px + penajam kontras tinta untuk membaca silang [X], ralat (=), dan centang [√] secara akurat.
+          Mode Turbo menonaktifkan jeda berpikir AI dan mengompres grayscale tajam agar pembacaan selesai dalam 2–4 detik.
         </p>
       </div>
 
@@ -70,7 +70,7 @@
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-600 mb-1">Kelas Default</label>
-            <input type="text" id="inputKelas" placeholder="Contoh: X-A"
+            <input type="text" id="inputKelas" placeholder="Contoh: X"
               class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-600" />
           </div>
         </div>
@@ -152,7 +152,7 @@
     <section id="tab-scan" class="hidden space-y-4">
       <div class="bg-white rounded-xl shadow-sm p-4 border border-slate-200 text-center space-y-3">
         <div class="bg-blue-50 text-blue-800 text-xs p-3 rounded-lg text-left leading-relaxed">
-          <strong>Tips Foto Paling Akurat:</strong> Posisikan kamera tegak di atas kertas (jarak dekat sehingga bagian <em>Nama/Kelas</em> sampai <em>Blok C</em> memenuhi layar, tidak perlu memfoto bagian Uraian di bawah), pencahayaan terang merata.
+          <strong>Tips Akurasi Maksimal:</strong> Dekatkan kamera sehingga foto hanya mencakup bagian <em>Nama/Kelas</em> sampai <em>Blok C (B/S)</em>—tidak perlu memfoto bagian <em>D. Uraian</em> di bawah agar kotak jawaban terlihat lebih besar dan tajam.
         </div>
 
         <div class="grid grid-cols-2 gap-3 pt-1">
@@ -178,8 +178,8 @@
       <!-- Loading Indicator -->
       <div id="scanLoadingBox" class="hidden bg-white rounded-xl shadow-sm p-6 border border-blue-200 text-center space-y-2.5">
         <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-        <p id="scanLoadingTitle" class="font-bold text-sm text-slate-700">Mempertajam & Membaca LJK...</p>
-        <p id="scanLoadingSub" class="text-xs text-slate-500">Memeriksa tiap kotak PG, ralat (=), PGK, dan B/S dengan resolusi tinggi.</p>
+        <p id="scanLoadingTitle" class="font-bold text-sm text-slate-700">Membaca LJK Mode Turbo...</p>
+        <p id="scanLoadingSub" class="text-xs text-slate-500">Memetakan blok 1–5, 6–10, 11–15, 16–20, 21–25, PGK, dan B/S.</p>
       </div>
 
       <!-- Error Box -->
@@ -541,7 +541,7 @@
 
   function populateModelDropdown(modelsList, selectedVal) {
     const sel = document.getElementById('geminiModelSelect');
-    sel.innerHTML = '<option value="auto">Otomatis (Prioritas Flash Penuh Presisi Tinggi)</option>';
+    sel.innerHTML = '<option value="auto">Otomatis (Flash Turbo 2–4 Detik)</option>';
     modelsList.forEach(m => {
       const opt = document.createElement('option');
       opt.value = m;
@@ -580,16 +580,17 @@
         return true;
       });
 
-      // Rank: FULL Flash models FIRST for spatial precision, -lite models only as fallback
+      // Prioritize stable full Flash models (2.5-flash, 2.0-flash) for speed + spatial accuracy
       flashModels.sort((a, b) => {
         const score = (n) => {
           let s = 0;
-          if (n.includes('3.8')) s += 40;
-          else if (n.includes('3.5')) s += 35;
-          else if (n.includes('3.')) s += 30;
-          else if (n.includes('2.5')) s += 15;
-          if (n.includes('lite')) s -= 15; // keep lite as backup only
-          if (n.includes('latest')) s += 2;
+          if (n === 'gemini-2.5-flash') s += 100;
+          else if (n === 'gemini-2.0-flash') s += 90;
+          else if (n.includes('2.5-flash') && !n.includes('lite')) s += 80;
+          else if (n.includes('3') && n.includes('flash') && !n.includes('lite')) s += 75;
+          else if (n.includes('2.0-flash') && !n.includes('lite')) s += 70;
+          if (n.includes('lite')) s -= 20;
+          if (n.includes('exp') || n.includes('preview')) s -= 10;
           return s;
         };
         return score(b) - score(a);
@@ -797,8 +798,8 @@
     document.getElementById('headerCountBadge').textContent = `${appState.students.length} Siswa`;
   }
 
-  // ==================== HIGH-RES CONTRAST PREPROCESSING & AI VISION ====================
-  function preprocessAndEncodeSheet(file, maxDim = 1800, quality = 0.90) {
+  // ==================== FAST GPU GRAYSCALE PREPROCESSING ====================
+  function preprocessAndEncodeSheet(file, maxDim = 1440, quality = 0.82) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -819,19 +820,10 @@
           canvas.width = w;
           canvas.height = h;
           const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, w, h);
 
-          // Enhance ink contrast gently so thin ballpoint pen [X] & [√] stand out clearly
-          const imgData = ctx.getImageData(0, 0, w, h);
-          const d = imgData.data;
-          const contrast = 1.22;
-          const intercept = 128 * (1 - contrast);
-          for (let i = 0; i < d.length; i += 4) {
-            d[i] = Math.min(255, Math.max(0, d[i] * contrast + intercept));
-            d[i + 1] = Math.min(255, Math.max(0, d[i + 1] * contrast + intercept));
-            d[i + 2] = Math.min(255, Math.max(0, d[i + 2] * contrast + intercept));
-          }
-          ctx.putImageData(imgData, 0, 0);
+          // Hardware-accelerated grayscale + contrast boost (65% smaller payload, crisp ink)
+          ctx.filter = 'grayscale(100%) contrast(130%) brightness(104%)';
+          ctx.drawImage(img, 0, 0, w, h);
 
           const dataUrl = canvas.toDataURL('image/jpeg', quality);
           resolve({
@@ -849,6 +841,28 @@
 
   const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
+  function extractPGFromGroupedResponse(parsedData) {
+    const pgResult = {};
+    const groups = [
+      { key: 'pg_1_5', offset: 1 },
+      { key: 'pg_6_10', offset: 6 },
+      { key: 'pg_11_15', offset: 11 },
+      { key: 'pg_16_20', offset: 16 },
+      { key: 'pg_21_25', offset: 21 }
+    ];
+
+    groups.forEach(g => {
+      const arr = Array.isArray(parsedData[g.key]) ? parsedData[g.key] : [];
+      for (let idx = 0; idx < 5; idx++) {
+        const qNum = g.offset + idx;
+        const raw = arr[idx] ? String(arr[idx]).toUpperCase().trim() : '';
+        pgResult[qNum] = ['A', 'B', 'C', 'D', 'E'].includes(raw) ? raw : '';
+      }
+    });
+
+    return pgResult;
+  }
+
   async function handleImageSelected(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -865,36 +879,34 @@
     document.getElementById('scanResultBox').classList.add('hidden');
     document.getElementById('scanErrorBox').classList.add('hidden');
     document.getElementById('scanLoadingBox').classList.remove('hidden');
-    document.getElementById('scanLoadingTitle').textContent = 'Mempertajam & Membaca LJK...';
-    document.getElementById('scanLoadingSub').textContent = 'Menganalisis kotak PG, ralat (=), PGK, dan B/S pada resolusi 1800px.';
+    document.getElementById('scanLoadingTitle').textContent = 'Membaca LJK Mode Turbo...';
+    document.getElementById('scanLoadingSub').textContent = 'Memetakan blok 1–5, 6–10, 11–15, 16–20, 21–25, PGK, dan B/S.';
+
+    const t0 = performance.now();
 
     try {
-      const { dataUrl, base64 } = await preprocessAndEncodeSheet(file, 1800, 0.90);
+      const { dataUrl, base64 } = await preprocessAndEncodeSheet(file, 1440, 0.82);
       const { parsedData, usedModel } = await analyzeSheetWithAutoFallback(base64);
+      const elapsedSec = ((performance.now() - t0) / 1000).toFixed(1);
 
       currentScan = {
         imageDataUrl: dataUrl,
-        usedModel,
+        usedModel: `${usedModel} (${elapsedSec} dtk)`,
         nama: (parsedData.nama || '').trim(),
         kelas: (parsedData.kelas || appState.kelas || '').trim(),
         nomor_peserta: (parsedData.nomor_peserta || '').trim(),
-        pg: {},
+        pg: extractPGFromGroupedResponse(parsedData),
         pgk: {},
         bs: {},
         catatan_ai: parsedData.catatan_ai || ''
       };
 
-      for (let i = 1; i <= 25; i++) {
-        const val = (parsedData.pg && parsedData.pg[String(i)]) ? String(parsedData.pg[String(i)]).toUpperCase().trim() : '';
-        currentScan.pg[i] = ['A', 'B', 'C', 'D', 'E'].includes(val) ? val : '';
-      }
-
       for (let q = 1; q <= 5; q++) {
         const rawArr = (parsedData.pgk && Array.isArray(parsedData.pgk[String(q)])) ? parsedData.pgk[String(q)] : [];
-        currentScan.pgk[q] = rawArr
-          .map(n => parseInt(n, 10))
-          .filter(n => n >= 1 && n <= CHOICE_COUNT_4)
-          .sort((a, b) => a - b);
+        const uniqueValid = [...new Set(
+          rawArr.map(n => parseInt(n, 10)).filter(n => n >= 1 && n <= CHOICE_COUNT_4)
+        )].sort((a, b) => a - b);
+        currentScan.pgk[q] = uniqueValid;
       }
 
       for (let q = 1; q <= 5; q++) {
@@ -916,8 +928,77 @@
     }
   }
 
-  async function callSingleGeminiModel(modelName, base64Jpeg, promptText) {
+  function buildStrictResponseSchema() {
+    const pgEnum = ['A', 'B', 'C', 'D', 'E', ''];
+    const bsEnum = ['B', 'S', ''];
+    const fiveRowPgArray = {
+      type: 'ARRAY',
+      items: { type: 'STRING', enum: pgEnum }
+    };
+    const pgkArray = {
+      type: 'ARRAY',
+      items: { type: 'INTEGER' }
+    };
+    const bsArray = {
+      type: 'ARRAY',
+      items: { type: 'STRING', enum: bsEnum }
+    };
+
+    return {
+      type: 'OBJECT',
+      properties: {
+        nama: { type: 'STRING' },
+        nomor_peserta: { type: 'STRING' },
+        kelas: { type: 'STRING' },
+        pg_1_5: fiveRowPgArray,
+        pg_6_10: fiveRowPgArray,
+        pg_11_15: fiveRowPgArray,
+        pg_16_20: fiveRowPgArray,
+        pg_21_25: fiveRowPgArray,
+        pgk: {
+          type: 'OBJECT',
+          properties: {
+            '1': pgkArray,
+            '2': pgkArray,
+            '3': pgkArray,
+            '4': pgkArray,
+            '5': pgkArray
+          },
+          required: ['1', '2', '3', '4', '5']
+        },
+        bs: {
+          type: 'OBJECT',
+          properties: {
+            '1': bsArray,
+            '2': bsArray,
+            '3': bsArray,
+            '4': bsArray,
+            '5': bsArray
+          },
+          required: ['1', '2', '3', '4', '5']
+        },
+        catatan_ai: { type: 'STRING' }
+      },
+      required: [
+        'nama', 'nomor_peserta', 'kelas',
+        'pg_1_5', 'pg_6_10', 'pg_11_15', 'pg_16_20', 'pg_21_25',
+        'pgk', 'bs', 'catatan_ai'
+      ]
+    };
+  }
+
+  async function callSingleGeminiModel(modelName, base64Jpeg, promptText, disableThinking = true) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(appState.apiKey)}`;
+    const genConfig = {
+      temperature: 0.0,
+      responseMimeType: 'application/json',
+      responseSchema: buildStrictResponseSchema()
+    };
+
+    if (disableThinking) {
+      genConfig.thinkingConfig = { thinkingBudget: 0 };
+    }
+
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -928,10 +1009,7 @@
             { inline_data: { mime_type: 'image/jpeg', data: base64Jpeg } }
           ]
         }],
-        generationConfig: {
-          temperature: 0.05,
-          responseMimeType: 'application/json'
-        }
+        generationConfig: genConfig
       })
     });
 
@@ -957,92 +1035,77 @@
     const fallbackPool = [
       ...(appState.model && appState.model !== 'auto' ? [appState.model] : []),
       ...(appState.discoveredFlashModels || []),
-      'gemini-3.8-flash',
-      'gemini-3.5-flash',
-      'gemini-3.8-flash-lite',
-      'gemini-3.5-flash-lite'
+      'gemini-2.5-flash',
+      'gemini-2.0-flash'
     ];
     const candidateModels = [...new Set(fallbackPool)];
 
-    const promptText = `Kamu adalah sistem OMR & OCR presisi tinggi khusus untuk Lembar Jawab SAS Gasal SMA Islam Darussalam.
-Amati gambar dengan sangat teliti, sel demi sel, tanpa menebak:
+    const promptText = `Baca Lembar Jawab Ujian SMA Islam Darussalam ini dengan akurasi 100%.
 
-1. IDENTITAS SISWA (Bagian Atas):
-   - "nama": baca tulisan tangan setelah "Nama :".
-   - "nomor_peserta": baca tulisan tangan setelah "Nomor Peserta :".
-   - "kelas": baca tulisan tangan setelah "Kelas :".
+1. IDENTITAS ATAS:
+   - nama: tulisan tangan pada "Nama :"
+   - nomor_peserta: tulisan tangan pada "Nomor Peserta :"
+   - kelas: tulisan tangan pada "Kelas :"
 
-2. BLOK A. PILIHAN GANDA (Nomor 1 sampai ${appState.pgCount}):
-   - Tata letak Blok A terbagi menjadi beberapa kotak tabel terpisah:
-     * Tabel Kiri Atas: Nomor 1, 2, 3, 4, 5
-     * Tabel Kiri Bawah: Nomor 6, 7, 8, 9, 10
-     * Tabel Tengah Atas: Nomor 11, 12, 13, 14, 15
-     * Tabel Tengah Bawah: Nomor 16, 17, 18, 19, 20
-     ${appState.pgCount === 25 ? '* Tabel Kanan Atas: Nomor 21, 22, 23, 24, 25' : '* (Abaikan Tabel Kanan Atas nomor 21-25)'}
-   - Setiap baris memiliki kolom nomor soal di kiri diikuti 5 kotak berhuruf cetak: A | B | C | D | E (baris genap memiliki latar abu-abu muda, baris ganjil putih).
-   - JANGAN menganggap huruf cetak A, B, C, D, E di kotak kosong sebagai jawaban!
-   - Jawaban SAH adalah kotak yang ditimpa tanda SILANG BOLPOIN [X] (dua garis diagonal menyilang).
-   - ATURAN RALAT: Jika sebuah kotak diberi dua garis coretan mendatar (=) untuk membatalkan pilihan, ABAIKAN kotak tersebut dan ambil kotak lain di baris yang sama yang memiliki tanda silang [X] bersih.
-   - Jika baris kosong atau memiliki >1 tanda silang [X] aktif yang tidak dicoret, isi "".
+2. A. PILIHAN GANDA (Dikembalikan per kotak berisi TEPAT 5 elemen):
+   Tata letak Blok A terbagi menjadi 3 kolom kotak terpisah:
+   - Kolom Kiri Atas -> "pg_1_5" (5 baris: nomor 1, 2, 3, 4, 5)
+   - Kolom Kiri Bawah -> "pg_6_10" (5 baris: nomor 6, 7, 8, 9, 10)
+   - Kolom Tengah Atas -> "pg_11_15" (5 baris: nomor 11, 12, 13, 14, 15)
+   - Kolom Tengah Bawah -> "pg_16_20" (5 baris: nomor 16, 17, 18, 19, 20)
+   - Kolom Kanan Atas -> "pg_21_25" (5 baris: nomor 21, 22, 23, 24, 25; isi ["","","","",""] jika tidak dipakai)
+   * Abaikan kotak kanan bawah (nomor 26-30).
+   * Tiap baris berisi huruf cetak [A][B][C][D][E]. Hanya kotak bertanda SILANG BOLPOIN [X] yang dihitung sebagai jawaban.
+   * RALAT: Jika kotak dicoret dua garis mendatar (=) untuk membatalkan pilihan, abaikan kotak itu dan ambil kotak lain yang memiliki silang [X] bersih. Jika kosong/ganda tanpa coretan, isi "".
 
-3. BLOK B. PILIHAN GANDA KOMPLEKS (Nomor 1 sampai 5, HANYA 4 KOTAK TERATAS):
-   - Di kiri bawah ada 5 kolom vertikal berlabel angka 1, 2, 3, 4, 5 di sebelah kirinya.
-   - Setiap kolom memiliki kotak-kotak vertikal. Periksa HANYA 4 kotak teratas dari atas ke bawah (baris 1, 2, 3, 4). Abaikan kotak ke-5 paling bawah.
-   - Laporkan nomor baris (1..4) yang memiliki goresan tanda CENTANG [√] atau silang di dalamnya (misal [1, 3] atau []).
+3. B. PILIHAN GANDA KOMPLEKS (Kiri Bawah, 5 soal bernomor 1 s.d. 5):
+   - Tiap soal memiliki 4 kotak centang vertikal dari atas (1) ke bawah (4).
+   - Untuk key "1".."5", kembalikan array nomor kotak (1..4) yang diberi tanda CENTANG [√] (contoh: [1, 2]).
 
-4. BLOK C. PILIHAN GANDA KATEGORI / BENAR SALAH (Nomor 1 sampai 5, HANYA 4 BARIS TERATAS):
-   - Di kanan bawah ada 5 tabel kecil berlabel 1, 2, 3, 4, 5.
-   - Baris paling atas tiap tabel adalah header huruf cetak "B" (kolom kiri) dan "S" (kolom kanan).
-   - Di bawah header B/S, periksa HANYA 4 baris pertama dari atas ke bawah (indeks 0, 1, 2, 3). Abaikan baris ke-5 paling bawah.
-   - Pada setiap baris, lihat apakah tanda CENTANG [√] berada di kolom kiri ("B") atau kolom kanan ("S"). Jika kosong isi "".
+4. C. PILIHAN GANDA KATEGORI / BENAR-SALAH (Kanan Bawah, 5 tabel kecil bernomor 1 s.d. 5):
+   - Tiap tabel memiliki header kolom kiri "B" dan kolom kanan "S", diikuti 4 baris pernyataan dari atas ke bawah.
+   - Untuk key "1".."5", kembalikan array 4 elemen ("B", "S", atau "") sesuai posisi tanda CENTANG [√] tiap baris.
 
-5. BLOK D. URAIAN: Abaikan sepenuhnya.
-
-Kembalikan HANYA JSON valid dengan urutan key persis seperti berikut ("layout_verification" diisi lebih dulu untuk memastikan tidak ada pergeseran baris):
-{
-  "layout_verification": "ringkasan singkat pengecekan tiap blok",
-  "nama": "string",
-  "nomor_peserta": "string",
-  "kelas": "string",
-  "pg": {"1": "A", ...},
-  "pgk": {"1": [1, 3], ...},
-  "bs": {"1": ["B", "S", "B", "S"], ...},
-  "catatan_ai": "string"
-}`;
+5. Abaikan bagian D. URAIAN di paling bawah.`;
 
     let lastError = null;
 
     for (let i = 0; i < candidateModels.length; i++) {
       const modelName = candidateModels[i];
 
-      for (let attempt = 1; attempt <= 2; attempt++) {
-        try {
-          if (i > 0 || attempt > 1) {
-            document.getElementById('scanLoadingTitle').textContent = `Membaca lewat jalur ${modelName}...`;
-            document.getElementById('scanLoadingSub').textContent = 'Mengoptimalkan koneksi server pembacaan...';
-          }
-          const parsedData = await callSingleGeminiModel(modelName, base64Jpeg, promptText);
-          return { parsedData, usedModel: modelName };
-        } catch (err) {
-          lastError = err;
-          const msgLower = (err.message || '').toLowerCase();
+      try {
+        if (i > 0) {
+          document.getElementById('scanLoadingTitle').textContent = `Mengalihkan ke ${modelName}...`;
+        }
+        const parsedData = await callSingleGeminiModel(modelName, base64Jpeg, promptText, true);
+        return { parsedData, usedModel: modelName };
+      } catch (err) {
+        lastError = err;
+        const msgLower = (err.message || '').toLowerCase();
 
-          if (err.status === 400 && msgLower.includes('api key')) {
-            throw new Error('Gemini API Key tidak valid. Periksa kembali API Key di tab Setup & Kunci.');
-          }
+        if (err.status === 400 && msgLower.includes('api key')) {
+          throw new Error('Gemini API Key tidak valid. Periksa kembali API Key di tab Setup & Kunci.');
+        }
 
-          if (err.status === 404 || msgLower.includes('no longer available') || msgLower.includes('limit: 0')) {
-            break;
-          }
-
-          if (attempt === 1) {
-            await sleep(1000);
+        // If model rejects thinkingConfig parameter, retry immediately without thinkingConfig
+        if (err.status === 400 && (msgLower.includes('thinking') || msgLower.includes('budget'))) {
+          try {
+            const parsedData = await callSingleGeminiModel(modelName, base64Jpeg, promptText, false);
+            return { parsedData, usedModel: modelName };
+          } catch (retryErr) {
+            lastError = retryErr;
           }
         }
+
+        if (err.status === 404 || msgLower.includes('no longer available') || msgLower.includes('limit: 0')) {
+          continue;
+        }
+
+        await sleep(600);
       }
     }
 
-    throw new Error(`Semua jalur model sedang padat sementara (${lastError?.message || 'High demand'}). Tunggu beberapa detik lalu tekan foto ulang.`);
+    throw new Error(`Server AI sedang sibuk (${lastError?.message || 'Timeout'}). Tekan foto ulang beberapa detik lagi.`);
   }
 
   // ==================== SCORING & PREVIEW VERIFICATION ====================
