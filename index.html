@@ -44,7 +44,7 @@
           <div class="grid grid-cols-2 gap-2">
             <button type="button" id="btnProviderGroq" onclick="setProvider('groq')"
               class="py-2 px-2 text-xs font-bold rounded-lg border border-blue-600 bg-blue-600 text-white">
-              Groq (1.000/hari Gratis)
+              Groq (~85 LJK/hari Gratis)
             </button>
             <button type="button" id="btnProviderGemini" onclick="setProvider('gemini')"
               class="py-2 px-2 text-xs font-bold rounded-lg border border-slate-300 bg-white text-slate-700">
@@ -63,10 +63,10 @@
             </button>
           </div>
           <select id="groqModelSelect" class="w-full text-xs border border-slate-300 rounded-lg px-2.5 py-2 text-slate-700 bg-white font-medium">
-            <option value="qwen/qwen3.8-27b">Qwen 3.8 27B Vision (1.000 foto/hari • 30 RPM)</option>
+            <option value="qwen/qwen3.8-27b">Qwen 3.8 27B Vision (Mode Hemat Token • ~85 LJK/hari)</option>
           </select>
           <p class="text-[11px] text-slate-500">
-            Buat API Key gratis di <strong>console.groq.com</strong> (menu API Keys -> Create API Key, tanpa kartu bank).
+            Jalur utama cepat & hemat token (200K token/hari gratis di <strong>console.groq.com</strong>). Jika kuota harian Groq penuh, pindah ke tab <strong>Google Gemini</strong>.
           </p>
         </div>
 
@@ -531,7 +531,6 @@
     }
     ensureKeyStructures();
 
-    // Paksa pembaruan model Groq lama (Llama 4) ke Qwen 3.8 27B Vision
     if (!appState.groqModel || appState.groqModel.includes('llama-4')) {
       appState.groqModel = 'qwen/qwen3.8-27b';
     }
@@ -939,7 +938,15 @@
     return pgResult;
   }
 
-  const SHARED_LJK_PROMPT = `Baca Lembar Jawab Ujian SMA Islam Darussalam ini dengan akurasi 100%.
+  const COMPACT_GROQ_PROMPT = `Baca LJK ini, kembalikan HANYA JSON valid:
+- nama, nomor_peserta, kelas: tulisan tangan bagian atas.
+- pg_1_5 (no 1-5 kiri atas), pg_6_10 (no 6-10 kiri bawah), pg_11_15 (no 11-15 tengah atas), pg_16_20 (no 16-20 tengah bawah), pg_21_25 (no 21-25 kanan atas, isi "-" jika kosong): array 5 huruf ("A"-"E" atau "-") yang disilang [X]. Abaikan kotak dicoret (=).
+- pgk: key "1".."5" (kiri bawah), array nomor kotak 1..4 (atas ke bawah) yang dicentang [√].
+- bs: key "1".."5" (kanan bawah), array 4 elemen ("B","S", atau "-") tiap baris atas ke bawah yang dicentang [√].
+- catatan_ai: catatan singkat jika ada coretan/ragu.
+Format: {"nama":"","nomor_peserta":"","kelas":"","pg_1_5":["-","-","-","-","-"],"pg_6_10":["-","-","-","-","-"],"pg_11_15":["-","-","-","-","-"],"pg_16_20":["-","-","-","-","-"],"pg_21_25":["-","-","-","-","-"],"pgk":{"1":[],"2":[],"3":[],"4":[],"5":[]},"bs":{"1":["-","-","-","-"],"2":["-","-","-","-"],"3":["-","-","-","-"],"4":["-","-","-","-"],"5":["-","-","-","-"]},"catatan_ai":""}`;
+
+  const GEMINI_LJK_PROMPT = `Baca Lembar Jawab Ujian SMA Islam Darussalam ini dengan akurasi 100%.
 
 1. IDENTITAS ATAS:
    - nama: tulisan tangan pada "Nama :"
@@ -966,8 +973,7 @@
    - Untuk key "1".."5", kembalikan array 4 elemen ("B", "S", atau "-") sesuai posisi tanda CENTANG [√] tiap baris.
 
 5. Abaikan bagian D. URAIAN di paling bawah.
-Kembalikan HANYA objek JSON valid tanpa markdown dengan struktur persis:
-{"nama":"","nomor_peserta":"","kelas":"","pg_1_5":["-","-","-","-","-"],"pg_6_10":["-","-","-","-","-"],"pg_11_15":["-","-","-","-","-"],"pg_16_20":["-","-","-","-","-"],"pg_21_25":["-","-","-","-","-"],"pgk":{"1":[],"2":[],"3":[],"4":[],"5":[]},"bs":{"1":["-","-","-","-"],"2":["-","-","-","-"],"3":["-","-","-","-"],"4":["-","-","-","-"],"5":["-","-","-","-"]},"catatan_ai":""}`;
+Kembalikan HANYA objek JSON valid dengan key: nama, nomor_peserta, kelas, pg_1_5, pg_6_10, pg_11_15, pg_16_20, pg_21_25, pgk, bs, catatan_ai.`;
 
   async function handleImageSelected(event) {
     const file = event.target.files[0];
@@ -1042,9 +1048,8 @@ Kembalikan HANYA objek JSON valid tanpa markdown dengan struktur persis:
     }
   }
 
-  // ==================== GROQ VISION ENGINE (QWEN 3.8 27B) ====================
+  // ==================== GROQ VISION ENGINE (QWEN 3.8 27B HEMAT TOKEN) ====================
   function parseSafeJsonFromText(rawText) {
-    // Bersihkan blok <think>...</think> jika model menyertakan penalaran sebelum JSON
     let text = rawText.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
     text = text.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
     const firstBrace = text.indexOf('{');
@@ -1074,13 +1079,14 @@ Kembalikan HANYA objek JSON valid tanpa markdown dengan struktur persis:
         body: JSON.stringify({
           model: modelName,
           temperature: 0.0,
-          max_tokens: 1400,
+          reasoning_effort: 'none',
+          max_tokens: 700,
           response_format: { type: 'json_object' },
           messages: [
             {
               role: 'user',
               content: [
-                { type: 'text', text: SHARED_LJK_PROMPT },
+                { type: 'text', text: COMPACT_GROQ_PROMPT },
                 { type: 'image_url', image_url: { url: jpegDataUrl } }
               ]
             }
@@ -1187,7 +1193,7 @@ Kembalikan HANYA objek JSON valid tanpa markdown dengan struktur persis:
         body: JSON.stringify({
           contents: [{
             parts: [
-              { text: SHARED_LJK_PROMPT },
+              { text: GEMINI_LJK_PROMPT },
               { inline_data: { mime_type: 'image/jpeg', data: base64Jpeg } }
             ]
           }],
