@@ -63,11 +63,10 @@
             </button>
           </div>
           <select id="groqModelSelect" class="w-full text-xs border border-slate-300 rounded-lg px-2.5 py-2 text-slate-700 bg-white font-medium">
-            <option value="meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout 17B Vision (Cepat & Akurat)</option>
-            <option value="meta-llama/llama-4-maverick-17b-128e-instruct">Llama 4 Maverick 17B Vision (Detail Tinggi)</option>
+            <option value="qwen/qwen3.8-27b">Qwen 3.8 27B Vision (1.000 foto/hari • 30 RPM)</option>
           </select>
           <p class="text-[11px] text-slate-500">
-            Dapatkan API Key gratis di <strong>console.groq.com</strong> (tanpa kartu bank, jatah 1.000 foto/hari).
+            Buat API Key gratis di <strong>console.groq.com</strong> (menu API Keys -> Create API Key, tanpa kartu bank).
           </p>
         </div>
 
@@ -476,7 +475,7 @@
   let appState = {
     provider: 'groq',
     groqApiKey: '',
-    groqModel: 'meta-llama/llama-4-scout-17b-16e-instruct',
+    groqModel: 'qwen/qwen3.8-27b',
     apiKey: '',
     model: 'auto',
     discoveredFlashModels: [],
@@ -523,7 +522,6 @@
       try {
         const parsed = JSON.parse(saved);
         appState = { ...appState, ...parsed };
-        // Jika pengguna sebelumnya sudah mengisi Gemini Key tapi belum punya Groq Key, default ke Gemini
         if (!parsed.provider && parsed.apiKey && !parsed.groqApiKey) {
           appState.provider = 'gemini';
         }
@@ -533,6 +531,11 @@
     }
     ensureKeyStructures();
 
+    // Paksa pembaruan model Groq lama (Llama 4) ke Qwen 3.8 27B Vision
+    if (!appState.groqModel || appState.groqModel.includes('llama-4')) {
+      appState.groqModel = 'qwen/qwen3.8-27b';
+    }
+
     appState.discoveredFlashModels = (appState.discoveredFlashModels || []).filter(
       m => !m.includes('2.0') && !m.includes('1.5') && !m.includes('1.0')
     );
@@ -541,7 +544,7 @@
     }
 
     document.getElementById('groqApiKeyInput').value = appState.groqApiKey || '';
-    document.getElementById('groqModelSelect').value = appState.groqModel || 'meta-llama/llama-4-scout-17b-16e-instruct';
+    document.getElementById('groqModelSelect').value = appState.groqModel;
     document.getElementById('apiKeyInput').value = appState.apiKey || '';
     populateModelDropdown(appState.discoveredFlashModels, appState.model || 'auto');
 
@@ -620,7 +623,7 @@
       : document.getElementById('apiKeyInput').value.trim();
 
     if (activeKey && activeKey.length > 10) {
-      badge.textContent = appState.provider === 'groq' ? 'Groq Aktif' : 'Gemini Aktif';
+      badge.textContent = appState.provider === 'groq' ? 'Groq Qwen Aktif' : 'Gemini Aktif';
       badge.className = 'text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold';
     } else {
       badge.textContent = 'Wajib diisi';
@@ -847,7 +850,7 @@
 
   async function saveAllConfig(notify = false) {
     appState.groqApiKey = document.getElementById('groqApiKeyInput').value.trim();
-    appState.groqModel = document.getElementById('groqModelSelect').value;
+    appState.groqModel = document.getElementById('groqModelSelect').value || 'qwen/qwen3.8-27b';
     appState.apiKey = document.getElementById('apiKeyInput').value.trim();
     appState.model = document.getElementById('geminiModelSelect').value;
     appState.mapel = document.getElementById('inputMapel').value.trim();
@@ -860,7 +863,7 @@
     saveStateToStorage();
 
     if (notify) {
-      const label = appState.provider === 'groq' ? 'Groq Vision' : 'Google Gemini';
+      const label = appState.provider === 'groq' ? 'Groq (Qwen 3.8 27B)' : 'Google Gemini';
       showToast(`Tersimpan! Penyedia aktif: ${label}`);
     }
   }
@@ -1039,14 +1042,26 @@ Kembalikan HANYA objek JSON valid tanpa markdown dengan struktur persis:
     }
   }
 
-  // ==================== GROQ VISION ENGINE ====================
+  // ==================== GROQ VISION ENGINE (QWEN 3.8 27B) ====================
+  function parseSafeJsonFromText(rawText) {
+    // Bersihkan blok <think>...</think> jika model menyertakan penalaran sebelum JSON
+    let text = rawText.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+    text = text.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+    const firstBrace = text.indexOf('{');
+    const lastBrace = text.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1) {
+      text = text.slice(firstBrace, lastBrace + 1);
+    }
+    return JSON.parse(text);
+  }
+
   async function analyzeSheetWithGroq(jpegDataUrl) {
-    const modelName = appState.groqModel || 'meta-llama/llama-4-scout-17b-16e-instruct';
-    const shortLabel = modelName.includes('maverick') ? 'Groq Llama-4 Maverick' : 'Groq Llama-4 Scout';
+    const modelName = 'qwen/qwen3.8-27b';
+    const shortLabel = 'Groq Qwen-3.8 27B Vision';
     document.getElementById('scanLoadingTitle').textContent = `Membaca lewat ${shortLabel}...`;
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000);
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     try {
       const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -1059,7 +1074,7 @@ Kembalikan HANYA objek JSON valid tanpa markdown dengan struktur persis:
         body: JSON.stringify({
           model: modelName,
           temperature: 0.0,
-          max_tokens: 1024,
+          max_tokens: 1400,
           response_format: { type: 'json_object' },
           messages: [
             {
@@ -1084,8 +1099,7 @@ Kembalikan HANYA objek JSON valid tanpa markdown dengan struktur persis:
 
       const data = await response.json();
       const rawText = data.choices?.[0]?.message?.content || '';
-      const cleanedJson = rawText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
-      const parsedData = JSON.parse(cleanedJson);
+      const parsedData = parseSafeJsonFromText(rawText);
       return { parsedData, usedModel: shortLabel };
     } finally {
       clearTimeout(timeoutId);
@@ -1191,8 +1205,7 @@ Kembalikan HANYA objek JSON valid tanpa markdown dengan struktur persis:
 
       const data = await response.json();
       const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      const cleanedJson = rawText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
-      return JSON.parse(cleanedJson);
+      return parseSafeJsonFromText(rawText);
     } finally {
       clearTimeout(timeoutId);
     }
